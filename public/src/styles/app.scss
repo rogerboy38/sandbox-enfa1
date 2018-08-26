@@ -1,0 +1,14 @@
+@import "./src/styles/_variables.scss";
+@import "./src/styles/_reset.scss";
+@import "./src/styles/_buttons.scss";
+
+// Partials
+@import "./src/styles/partials/_header.scss";
+@import "./src/styles/partials/_nav.scss";
+@import "./src/styles/partials/_footer.scss";
+
+// Pages
+@import "./src/styles/pages/_home.scss";
+@import "./src/styles/pages/_dashboard.scss";
+
+@import "./src/styles/components/_cards.scss";

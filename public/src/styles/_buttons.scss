@@ -1,0 +1,67 @@
+.btn {
+  border-radius: 0.05rem;
+  color: #fff;
+}
+/*.btn-primary {
+    background: linear-gradient(to right, rgb(242, 153, 74), rgb(242, 201, 76));
+    border: transparent;
+    padding: 10px 20px;
+    &:hover {
+      background-color: #000;
+    }
+}*/
+.cargo-button {
+}
+.btn-outline-primary {
+    color: $primary-dark;
+    background-color: transparent;
+    background-image: none;
+    border-color: $primary-dark;
+    &:hover {
+      background-color: $primary-dark;
+      color: $yellow-gold;
+      border-color: $primary-dark;
+    }
+}
+.btn-outline-secondary{
+    color: $yellow-gold;
+    background-color: transparent;
+    background-image: none;
+    border-color: $yellow-gold;
+    &:hover {
+      background: linear-gradient(to right, rgb(242, 153, 74), rgb(242, 201, 76));
+      color: $primary-dark;
+      border-color: $yellow-gold;
+    }
+}
+.label {
+    display: inline;
+    padding: .2em .6em .3em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: .25em;
+}
+
+.m-btn--air {
+  -webkit-box-shadow: 0 5px 10px 2px rgba(244,81,108,.19)!important;
+  box-shadow: 0 5px 10px 2px rgba(244,81,108,.19)!important;
+}
+
+.m-btn--pill {
+  border-radius: 60px;
+}
+
+[type=reset], [type=submit], button, html [type=button] {
+  -webkit-appearance: button;
+}
+
+.btn-danger {
+  color: #fff;
+  background-color: #f4516c;
+  border-color: #f4516c;
+}
