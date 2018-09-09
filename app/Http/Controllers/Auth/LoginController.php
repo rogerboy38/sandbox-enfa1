@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace Enfa\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
+use Enfa\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Html\FormBuilder;
 
 class LoginController extends Controller
 {

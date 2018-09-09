@@ -26,7 +26,7 @@ return [
     |
     */
 
-    'env' => env('APP_ENV', 'production'),
+    'env' => env('APP_ENV', 'debug'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,7 +39,7 @@ return [
     |
     */
 
-    'debug' => env('APP_DEBUG', false),
+    'debug' => env('APP_DEBUG', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'http://localhost/landing/public'),
 
     /*
     |--------------------------------------------------------------------------
@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'America/Mexico_City',
 
     /*
     |--------------------------------------------------------------------------
@@ -78,7 +78,7 @@ return [
     |
     */
 
-    'locale' => 'en',
+    'locale' => 'es',
 
     /*
     |--------------------------------------------------------------------------
@@ -124,6 +124,18 @@ return [
         /*
          * Laravel Framework Service Providers...
          */
+
+        Illuminate\Foundation\Providers\ArtisanServiceProvider::class,
+        Illuminate\Cache\CacheServiceProvider::class,
+        //Illuminate\Session\CommandsServiceProvider::class,
+        //  Illuminate\Routing\ControllerServiceProvider::class,
+        Illuminate\Log\LogServiceProvider::class,
+        Illuminate\Database\MigrationServiceProvider::class,
+        //Illuminate\Remote\RemoteServiceProvider::class,
+        //Illuminate\Auth\Reminders\ReminderServiceProvider::class,
+        //Illuminate\Database\SeedServiceProvider::class,
+
+
         Illuminate\Auth\AuthServiceProvider::class,
         Illuminate\Broadcasting\BroadcastServiceProvider::class,
         Illuminate\Bus\BusServiceProvider::class,
@@ -148,6 +160,17 @@ return [
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
 
+        //Illuminate\Workbench\WorkbenchServiceProvider::class,
+        //Aws\Laravel\AwsServiceProvider::class,
+        //Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
+        //Way\Generators\GeneratorsServiceProvider::class,
+        //Raahul\LarryFour\LarryFourServiceProvider::class,
+        //Davibennun\LaravelPushNotification\LaravelPushNotificationServiceProvider::class,
+        //Intervention\Image\ImageServiceProvider::class,
+        //Kris\LaravelFormBuilder\FormBuilderServiceProvider::class,
+        //Tomgrohl\Laravel\Encryption\EncryptionServiceProvider::class,
+
+
         /*
          * Package Service Providers...
          */
@@ -155,11 +178,11 @@ return [
         /*
          * Application Service Providers...
          */
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
-        // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class,
+        Enfa\Providers\AppServiceProvider::class,
+        Enfa\Providers\AuthServiceProvider::class,
+        // Enfa\Providers\BroadcastServiceProvider::class,
+        Enfa\Providers\EventServiceProvider::class,
+        Enfa\Providers\RouteServiceProvider::class,
 
     ],
 
@@ -183,7 +206,9 @@ return [
         'Broadcast' => Illuminate\Support\Facades\Broadcast::class,
         'Bus' => Illuminate\Support\Facades\Bus::class,
         'Cache' => Illuminate\Support\Facades\Cache::class,
+        'ClassLoader'       => Illuminate\Support\ClassLoader::class,
         'Config' => Illuminate\Support\Facades\Config::class,
+        'Controller'        => Illuminate\Routing\Controller::class,
         'Cookie' => Illuminate\Support\Facades\Cookie::class,
         'Crypt' => Illuminate\Support\Facades\Crypt::class,
         'DB' => Illuminate\Support\Facades\DB::class,
@@ -194,9 +219,12 @@ return [
         'Gate' => Illuminate\Support\Facades\Gate::class,
         'Hash' => Illuminate\Support\Facades\Hash::class,
         'Html' => Collective\Html\HtmlFacade::class,
+        'HTML'              => Illuminate\Support\Facades\HTML::class,
+        'Input'             => Illuminate\Support\Facades\Input::class,
         'Lang' => Illuminate\Support\Facades\Lang::class,
         'Log' => Illuminate\Support\Facades\Log::class,
         'Mail' => Illuminate\Support\Facades\Mail::class,
+        'Paginator'         => Illuminate\Support\Facades\Paginator::class,
         'Notification' => Illuminate\Support\Facades\Notification::class,
         'Password' => Illuminate\Support\Facades\Password::class,
         'Queue' => Illuminate\Support\Facades\Queue::class,
@@ -206,12 +234,19 @@ return [
         'Response' => Illuminate\Support\Facades\Response::class,
         'Route' => Illuminate\Support\Facades\Route::class,
         'Schema' => Illuminate\Support\Facades\Schema::class,
+        'Seeder'            => Illuminate\Database\Seeder::class,
         'Session' => Illuminate\Support\Facades\Session::class,
         'Storage' => Illuminate\Support\Facades\Storage::class,
-        'URL' => Illuminate\Support\Facades\URL::class,
+        'SoftDeletingTrait' => Illuminate\Database\Eloquent\SoftDeletingTrait::class,
+        'SSH'               => Illuminate\Support\Facades\SSH::class,
+        'Str'               => Illuminate\Support\Str::class,
+        'URL'               => Illuminate\Support\Facades\URL::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
-
+        'AWS'               => Aws\Laravel\AwsFacade::class,
+        'PushNotification'  => Davibennun\LaravelPushNotification\Facades\PushNotification::class,
+        'Image'             => Intervention\Image\Facades\Image::class,
+        'FormBuilder'       => Kris\LaravelFormBuilder\Facades\FormBuilder::class,
     ],
 
 ];

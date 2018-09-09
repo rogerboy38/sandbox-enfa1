@@ -55,9 +55,11 @@
           </ul>
         </div>
         <div class="col col-md-3 d-none d-md-flex align-items-center user-sign">
-              <a class="user-sign -in" href="./quoting.html">Entrar</a>
+              <a class="user-sign -in" href="login">Entrar</a>
               |
-              <a class="user-sign -up" href="#">Registrarme</a>
+              <a class="user-sign -up" href="userRegister">Registrarme</a>
+              |
+              <a class="active" href="landing">Home</a>
         </div>
   </div>
 </header>

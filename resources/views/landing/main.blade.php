@@ -1,16 +1,18 @@
 <main class="home">
-      <section class="welcome-bg">
+      <section class="welcome">
         <img class="welcome-bg -img img-fluid" src="src/images/bg-2.jpg" alt="">
-        <div class="row align-items-center">
-          <div class="col title">
+        <div class="welcome__overlay">
+          <div class="welcome__title">
             <p>Envía o transporta tu carga</p>
-              <h1><span style="color:#00ff00">RAPIDO</span> - SEGURO - <span style="color:#FFA000">EFECTIVO</span></h1>
-              <p>
-                Envía tu carga ¡ahora!
+              <h1><span style="color:#00ff00">RAPIDO</span><span style="color:#FFFFFF"> - SEGURO -</span><span style="color:#FFA000">EFECTIVO</span></h1>
+              <p><span style="color:#FFFFFF">
+                  ¿Necesitas llevar una carga?
+                  </span>
                 <br>
                 o
-                <br>
-                ¿Eres transportistas? Aumenta tus ingresos con nosotros
+                <br><span style="color:#FFA000">
+               O ¿Tienes transporte disponible?
+               </span>
             </p>
           </div>
         </div>

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace Enfa\Http\Controllers;
 
-use App\States;
+use Enfa\States;
 use Illuminate\Http\Request;
 
 class StateController extends Controller
@@ -41,7 +41,7 @@ class StateController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\States  $states
+     * @param  \Enfa\States  $states
      * @return \Illuminate\Http\Response
      */
     public function show(States $states)
@@ -52,7 +52,7 @@ class StateController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\States  $states
+     * @param  \Enfa\States  $states
      * @return \Illuminate\Http\Response
      */
     public function edit(States $states)
@@ -64,7 +64,7 @@ class StateController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\States  $states
+     * @param  \Enfa\States  $states
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, States $states)
@@ -75,7 +75,7 @@ class StateController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\States  $states
+     * @param  \Enfa\States  $states
      * @return \Illuminate\Http\Response
      */
     public function destroy(States $states)

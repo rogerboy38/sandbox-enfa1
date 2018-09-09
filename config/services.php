@@ -29,8 +29,13 @@ return [
         'secret' => env('SPARKPOST_SECRET'),
     ],
 
+    'mandrill' => [
+        'secret' => 'DOYwcdSfZFxrx8GO99W54w',
+        'username' => 'contacto@enfadelivery.com',
+    ],
+
     'stripe' => [
-        'model' => App\User::class,
+        'model' => Enfa\User::class,
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
     ],
