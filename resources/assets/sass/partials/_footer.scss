@@ -1,0 +1,23 @@
+footer {
+  font-size: 12px;
+  padding-top: 8em;
+  color: #757575;
+  background: $primary-dark;
+  //background-image: url("../img/f-0.jpg");
+  background-size: cover;
+  ul,li {
+    padding: 0.7em 0;
+  }
+  a {
+    color: #757575;
+  }
+}
+.links {
+  padding: 4em;
+}
+.copyright {
+  margin-top: 40px;
+  padding: 10px;
+  background: #131313;
+  margin: -15px;
+}
