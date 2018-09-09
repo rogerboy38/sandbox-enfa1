@@ -68,7 +68,6 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => Enfa\User::class,
-            //'model' => 'Admin',
         ],
 
         // 'users' => [

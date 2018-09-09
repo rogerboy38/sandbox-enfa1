@@ -1,4 +1,4 @@
-@extends("web.layoutenviar")
+@extends("web.layoutlogin")
 
 @section('content')
 {{ Form::open(array('url'=> '/login', 'method'=>'POST', 'class'=>"row m-0" ))}}
