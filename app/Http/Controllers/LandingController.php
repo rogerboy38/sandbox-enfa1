@@ -1,11 +1,11 @@
 <?php
-namespace App\Http\Controllers;
+namespace Enfa\Http\Controllers;
 
 class LandingController extends Controller
 {
 //use Illuminate\Support\Facades\DB;
-//use App\Models\State as States;
-//use App\State as States;
+//use Enfa\Models\State as States;
+//use Enfa\State as States;
 //use Illuminate\Support\Facades\View;
 
 	/**
@@ -98,5 +98,41 @@ class LandingController extends Controller
 		//
 	}
 
+	public function login()
+	{
+
+		return \View::make("user.login");
+
+	}
+
+	public function userRegister()
+	{
+        return \View::make("user.register");
+  }
+
+	public function quieroEnviar()
+	{
+        return \View::make("info.quieroEnviar");
+  }
+
+	public function quieroTransportar()
+	{
+				return \View::make("info.quieroTransportar");
+	}
+
+	public function ayuda()
+	{
+				return \View::make("info.ayuda");
+	}
+
+	public function termsandconditions()
+	{
+				return \View::make("info.termsandconditions");
+	}
+
+	public function privacidad()
+	{
+				return \View::make("info.PoliticadePrivacidad");
+	}
 
 }

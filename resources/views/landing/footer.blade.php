@@ -41,13 +41,13 @@
          </ul>
     </div>
     <div class="col-xs-12 col-md-4">
-        <h6>Enlaces</h6>
-        <ul>
-          <li><a href="#">Historia</a></li>
-          <li><a href="#">Preguntas Frecuentes</a></li>
-          <li><a href="#">Nuestro Equipo</a></li>
-          <li><a href="#">Invertir en ENFA</a></li>
-        </ul>
+      <h6>Enlaces</h6>
+            <ul>
+              <li><a href="quieroEnviar">Quiero Enviar</a></li>
+              <li><a href="quieroTransportar">Quiero Transportar</a></li>
+              <li><a href="privacidad">Aviso de Privacidad</a></li>
+              <li><a href="termsandconditions">Términos y Condiciones</a></li>
+            </ul>
     </div>
     </section>
     <section class="copyright">

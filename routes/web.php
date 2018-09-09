@@ -16,4 +16,18 @@ Route::get('/', function () {
 });
 Route::get('/landing', 'LandingController@index');
 
+Route::get('login','LandingController@login');
+
+Route::get('userRegister','LandingController@userRegister');
+
+Route::get('quieroTransportar','LandingController@quieroTransportar');
+
+Route::get('quieroEnviar','LandingController@quieroEnviar');
+
+Route::get('ayuda','LandingController@ayuda');
+
+Route::get('termsandconditions','LandingController@termsandconditions');
+
+Route::get('privacidad','LandingController@privacidad');
+
 Route::get('/landing/create', 'LandingController@create');
