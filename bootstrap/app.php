@@ -41,9 +41,6 @@ $app->singleton(
     Enfa\Exceptions\Handler::class
 );
 
-\Patchwork\Utf8\Bootup::initAll(); // Enables the portablity layer and configures PHP for UTF-8
-\Patchwork\Utf8\Bootup::filterRequestUri(); // Redirects to an UTF-8 encoded URL if it's not already the case
-\Patchwork\Utf8\Bootup::filterRequestInputs(); // Normalizes HTTP inputs to UTF-8 NFC
 /*
 |--------------------------------------------------------------------------
 | Return The Application

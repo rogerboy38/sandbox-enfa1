@@ -1,5 +1,4 @@
 <?php
-namespace Enfa\Http\Controllers;
 
 class BaseController extends Controller {
 

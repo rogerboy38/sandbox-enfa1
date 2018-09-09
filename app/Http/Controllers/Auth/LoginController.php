@@ -4,7 +4,6 @@ namespace Enfa\Http\Controllers\Auth;
 
 use Enfa\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use Illuminate\Html\FormBuilder;
 
 class LoginController extends Controller
 {
