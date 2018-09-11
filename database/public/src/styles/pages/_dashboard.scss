@@ -1,0 +1,134 @@
+.dashboard__user {
+  padding: 2rem 3rem;
+
+  ion-icon {
+    font-size: 16px;
+  }
+
+  .quote-cargo {
+    color: #000;
+    font-weight: 100;
+    padding: 4px 10px;
+    border: 2px solid $yellow-gold;
+
+    &:hover {
+      background-color: $yellow-gold;
+    }
+  }
+
+  .quoting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    img {
+      max-width: 500px;
+    }
+  }
+}
+.logo-dash {
+  max-width: 80px;
+}
+.-delete {
+  color: #8c1616;
+}
+.dashboard {
+  .pt-checkbox {
+    padding-top: 40px !important;
+  }
+  .m-subheader {
+    &.m-subheader__title {
+      display: inline-block;
+      padding: 7px 25px 7px 0;
+      font-family: Roboto;
+      font-weight: 300;
+      font-size: 1.55rem;
+      font-weight: 500;
+      vertical-align: middle;
+      margin: 0 15px 0 0;
+      color: #3f4047;
+    }
+  }
+  form {
+    input {
+      color: #575962;
+      border-color: #ebedf2;
+      border-radius: .25rem;
+      font-size: 1rem;
+      line-height: 1.25;
+      color: #495057;
+      background-color: #fff;
+      background-clip: padding-box;
+      border: 1px solid #ced4da;
+    }
+  }
+  table {
+    background: #fff;
+  }
+  background-color: #ecf0f5;
+  ion-icon {
+    margin-right: 8px;
+    margin-left: 10px;
+  }
+  nav {
+    color: #fff;
+    box-shadow: inherit;
+  }
+  .form__dashboard {
+    margin-bottom: 18px;
+  }
+  .form-group {
+    padding: 10px;
+  }
+  .card {
+    margin: 2em 10px;
+  }
+  .dashboard__exit {
+    color: #448AFF;
+  }
+  .active {
+    background-color: $yellow-gold;
+  }
+  .skin-blue .main-header .navbar {
+    background-color: #3c8dbc;
+  }
+  .user-orders {
+    a {
+      text-decoration: underline;
+    }
+
+    .order {
+      &.-status {
+        text-transform: uppercase;
+      }
+    }
+  }
+  .thead-dark {
+    border-bottom: 3px solid $yellow-gold;
+  }
+  .box-header>.fa, .box-header>.glyphicon, .box-header>.ion, .box-header .box-title {
+      display: inline-block;
+      font-size: 18px;
+      margin: 0;
+      line-height: 1;
+  }
+  .m-portlet {
+    -webkit-box-shadow: 0 1px 15px 1px rgba(69,65,78,.08);
+    box-shadow: 0 1px 15px 1px rgba(69,65,78,.08);
+    background-color: #fff;
+    padding: 2.2rem;
+    margin-top: 4rem;
+  }
+  .m-checkbox {
+    color: #575962;
+    display: inline-block;
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    -webkit-transition: all .3s;
+    transition: all .3s;
+  }
+
+}
