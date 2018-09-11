@@ -31,3 +31,11 @@ Route::get('termsandconditions','LandingController@termsandconditions');
 Route::get('privacidad','LandingController@privacidad');
 
 Route::get('/landing/create', 'LandingController@create');
+
+Route::post('/user/login', 'OwnerController@login');
+
+Route::post('/user/register', 'OwnerController@register');
+
+Route::post('/user/location', 'DogController@set_location');
+
+Route::any('/user/details', 'OwnerController@details');
