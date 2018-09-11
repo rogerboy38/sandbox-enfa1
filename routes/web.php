@@ -39,3 +39,7 @@ Route::post('/user/register', 'OwnerController@register');
 Route::post('/user/location', 'DogController@set_location');
 
 Route::any('/user/details', 'OwnerController@details');
+
+// 
+
+Route::get('/admin/login', array('as' => 'AdminLogin', 'uses' => 'AdminController@login'));
