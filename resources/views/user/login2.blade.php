@@ -1,6 +1,6 @@
 
 <div class="container-fluid login">
-    <div class="row h-100">
+    <div class="row h-60">
         <div class="col-sm-12 col-md-5 d-flex flex-column align-items-center justify-content-end -left">
 
             <strong>Iniciar Sesión</strong>
