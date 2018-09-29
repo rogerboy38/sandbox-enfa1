@@ -7,18 +7,25 @@
         <meta name="author" content="Dashboard">
         <meta name="keyword" content="Dashboard, Bootstrap, Admin, Template, Theme, Responsive, Fluid, Retina">
 
-        <title>{{Config::get('app.website_title');}}</title>
 
 
         <?php
+        $title = Config::get('app.website_title');
+
+        $base_theme=array();
         $theme = Theme::all();
+        $ancestor = $theme;
         $active = '#000066';
         $logo = '/image/logo.png';
         $favicon = '/image/favicon.ico';
+        while ($ancestor && isset($themes[$ancestor]->base_theme)) {
+         $ancestor = $themes[$ancestor]->base_theme;
+         $base_theme[] = $themes[$ancestor];
+         }
         foreach ($theme as $themes) {
-            $active = $themes->active_color;
-            $favicon = '/uploads/' . $themes->favicon;
-            $logo = '/uploads/' . $themes->logo;
+            $active = $themes['active_color'];
+            $favicon = '/uploads/' . $themes['favicon'];
+            $logo = '/uploads/' . $themes['logo'];
         }
         if ($logo == '/uploads/') {
             $logo = '/image/logo.png';
@@ -26,23 +33,25 @@
         if ($favicon == '/uploads/') {
             $favicon = '/image/favicon.ico';
         }
+
         ?>
+        <title>{{$title}}</title>
 
-
-        <link rel="icon" type="image/ico" href="<?php echo asset_url(); ?><?php echo $favicon; ?>">
+        <link href="{{asset('/favicon.ico')}}" rel="icon" type="image/ico" >
 
         <!-- Bootstrap core CSS -->
-        <link href="<?php echo asset_url(); ?>/web/css/bootstrap.css" rel="stylesheet">
+
+        <link href="{{asset('/web/css/bootstrap.css')}}" rel="stylesheet">
         <!--external css-->
-        <link href="<?php echo asset_url(); ?>/web/font-awesome/css/font-awesome.css" rel="stylesheet" />
-        <link rel="stylesheet" type="text/css" href="<?php echo asset_url(); ?>/web/js/gritter/css/jquery.gritter.css" />
+        <link href="{{asset('/web/font-awesome/css/font-awesome.css')}}" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="{{asset('/web/js/gritter/css/jquery.gritter.css')}}">
 
         <!-- Custom styles for this template -->
-        <link href="<?php echo asset_url(); ?>/web/css/style.css" rel="stylesheet">
-        <link href="<?php echo asset_url(); ?>/web/css/style-responsive.css" rel="stylesheet">
-        <script src="<?php echo asset_url(); ?>/web/js/jquery.js"></script>
-        <script src="<?php echo asset_url(); ?>/web/js/bootstrap.min.js"></script>
-        <script src="<?php echo asset_url(); ?>/web/js/bootstrap-tour.js"></script>
+        <link href="{{asset('/web/css/style.css')}}" rel="stylesheet">
+        <link href="{{asset('/web/css/style-responsive.css')}}" rel="stylesheet">
+        <script src="{{asset('/web/js/jquery.js')}}"></script>
+        <script src="{{asset('/web/js/bootstrap.min.js')}}"></script>
+        <script src="{{asset('/web/js/bootstrap-tour.js')}}"></script>
 
         <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 
@@ -106,7 +115,7 @@
         <![endif]-->
 
 
-        @if (isset($page) && $page == 'request-trip') 
+        @if (isset($page) && $page == 'request-trip')
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&sensor=false&libraries=places&region=MX"></script>
         <style>
             #map-canvas {
@@ -130,12 +139,12 @@ var input = document.getElementById('searchTextField');
 v
 var options = {
    bounds:defaultBounds
-   
+
 };
 
     var autocomplete = new google.maps.places.Autocomplete(address,options);
     autocomplete.setTypes(['geocode']);
-    
+
 
     google.maps.event.addListener(autocomplete, 'place_changed', function () {
         var place = autocomplete.getPlace();
@@ -267,7 +276,8 @@ google.maps.event.addDomListener(window, 'load', initialize);
                 padding-top: 20px;
             }
         </style>
-        <script src="<?php echo asset_url(); ?>/web/js/validation.js"></script>
+        <script src="{{asset('/web/js/validation.js')}}"></script>
+
     </head>
 
     <body>
@@ -295,7 +305,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
                 </div>
                 <div class="top-menu">
                     <ul class="nav pull-right top-menu">
-                        <li><a class="logout" href="{{route('/user/logout')}}">{{trans('customize.log_out'); }}</a></li>
+                        <li><a class="logout" href="{{route('/user/logout')}}">{{trans('customize.log_out') }}</a></li>
                     </ul>
                 </div>
             </header>
@@ -311,7 +321,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
                     <ul class="sidebar-menu" id="nav-accordion">
 
 
-                        <p class="centered"><a href="{{route('/user/profile')}}"><img src="<?= Session::get('user_pic') ? Session::get('user_pic') : asset_url() . '/web/default_profile.png' ?>" class="img-circle" width="60"></a></p>
+                        <p class="centered"><a href="{{route('/user/profile')}}"><img src="<?= Session::get('user_pic') ?> Session::get('user_pic') : {{asset('/web/default_profile.png')}} ." class="img-circle" width="60"></a></p>
 
                         <h5 class="centered">{{ Session::get('user_name') }}</h5>
 
@@ -346,7 +356,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
                         <li class="">
                             <a id="logout" href="{{route('/user/logout')}}">
                                 <i class="fa fa-power-off"></i>
-                                <span>{{trans('customize.log_out'); }}</span>
+                                <span>{{trans('customize.log_out') }}</span>
                             </a>
                         </li>
 
@@ -391,12 +401,12 @@ google.maps.event.addDomListener(window, 'load', initialize);
 
         <!-- js placed at the end of the document so the pages load faster -->
 
-        <script src="<?php echo asset_url(); ?>/web/js/jquery-ui-1.9.2.custom.min.js"></script>
-        <script src="<?php echo asset_url(); ?>/web/js/jquery.ui.touch-punch.min.js"></script>
-        <script class="include" type="text/javascript" src="<?php echo asset_url(); ?>/web/js/jquery.dcjqaccordion.2.7.js"></script>
-        <script src="<?php echo asset_url(); ?>/web/js/jquery.scrollTo.min.js"></script>
-        <script src="<?php echo asset_url(); ?>/web/js/jquery.nicescroll.js" type="text/javascript"></script>
-        <script type="text/javascript" src="<?php echo asset_url(); ?>/web/js/gritter/js/jquery.gritter.js"></script>
+        <script src="{{asset('/web/js/jquery-ui-1.9.2.custom.min.js')}}"></script>
+        <script src="{{asset('/web/js/jquery.ui.touch-punch.min.js')}}"></script>
+        <script class="include" type="text/javascript" src="{{asset('/web/js/jquery.dcjqaccordion.2.7.js')}}"></script>
+        <script src="{{asset('/web/js/jquery.scrollTo.min.js')}}"></script>
+        <script src="{{asset('/web/js/jquery.nicescroll.js')}}" type="text/javascript"></script>
+        <script type="text/javascript" src="{{asset('/web/js/gritter/js/jquery.gritter.js')}}"></script>
 
         <script type="text/javascript">
 
@@ -494,9 +504,7 @@ google.maps.event.addDomListener(window, 'load', initialize);
 
 
         <!--common script for all pages-->
-        <script src="<?php echo asset_url(); ?>/web/js/common-scripts.js"></script>
+        <script src="{{asset('/web/js/common-scripts.js')}}"></script>
 
     </body>
 </html>
-
-

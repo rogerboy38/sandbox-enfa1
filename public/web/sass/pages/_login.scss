@@ -1,0 +1,46 @@
+.login {
+  height: 100vh;
+
+  input {
+    padding: 10px 0;
+    margin-bottom: 1.5rem;
+    border: transparent;
+    border-bottom: 1px solid #ced4da;
+  }
+
+  .logo {
+    width: 300px;
+    max-width: inherit;
+  }
+
+  .form-check-inline {
+    width: 50%;
+  }
+
+  .-right {
+    color: #fff;
+    background: $yellow-gold;
+
+    .intro {
+      max-width: 500px;
+      padding-top: 8rem;
+
+      :first-child {
+        font-size: 2.5rem;
+      }
+    }
+  }
+
+  .sign {
+    &.-in {
+      width: 100%;
+      padding: 30px;
+    }
+  }
+
+  .terms {
+    a {
+      color: #DF698F;
+    }
+  }
+}

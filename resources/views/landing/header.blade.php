@@ -2,7 +2,7 @@
   <div class="row">
     <div class="col col-md-2">
       <a href="/">
-        <img class="logo" src="src/images/logo.svg" alt="Enfa">
+        <img class="logo" src={{asset('/src/images/logo.svg')}} alt="Enfa">
       </a>
     </div>
     <nav class="col col-xs-6 d-sm-flex d-md-none menu-mobile">
@@ -47,11 +47,11 @@
       </ul>-->
     </div>
         <div class="col col-md-3 d-none d-md-flex align-items-center user-sign">
-              <a class="user-sign -in" href="login">Entrar</a>
+              <a class="user-sign -in" href= {{web_url() . "/userLogin"}}>Entrar</a>
               |
-              <a class="user-sign -up" href="userRegister">Registrarme</a>
+              <a class="user-sign -up" href= {{web_url() . "/userRegister"}}>Registrarme</a>
               |
-              <a class="active" href="landing">Home</a>
+              <a class="active" href= {{web_url() . "/landing"}}>Home</a>
         </div>
   </div>
 </header>

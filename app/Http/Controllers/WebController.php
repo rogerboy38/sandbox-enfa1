@@ -1,6 +1,24 @@
 <?php
+namespace Enfa\Http\Controllers;
 
-class WebController extends \BaseController {
+use Enfa\Http\Controllers\Auth;
+use Enfa\Http\Controllers\Controller;
+use Enfa\Http\Controllers\BaseController;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use Theme;
+use Illuminate\Support\Facades\Config;
+
+class WebController extends Controller {
 
     /**
      * Display a listing of the resource.
@@ -50,7 +68,7 @@ class WebController extends \BaseController {
 
     public function banking_provider_mobile() {
         $id = Request::segment(2);
-        $provider = Walker::where('id', $id)->first();
+        $provider = \Enfa\Walkers::where('id', $id)->first();
 
         $theme = Theme::all();
         $logo = '/image/logo.png';
@@ -135,7 +153,7 @@ class WebController extends \BaseController {
 
         Log::info('res = ' . print_r($result, true));
         if ($result->success) {
-            $pro = Walker::where('id', Input::get('id'))->first();
+            $pro = \Enfa\Walkers::where('id', Input::get('id'))->first();
             $pro->merchant_id = $result->merchantAccount->id;
             $pro->save();
             Log::info(print_r($pro, true));
@@ -165,7 +183,7 @@ class WebController extends \BaseController {
 
             Log::info('recipient = ' . print_r($recipient, true));
 
-            $pro = Walker::where('id', Input::get('id'))->first();
+            $pro = \Enfa\Walkers::where('id', Input::get('id'))->first();
             $pro->merchant_id = $recipient->id;
             $pro->account_id = $recipient->active_account->id;
             $pro->last_4 = $recipient->active_account->last4;

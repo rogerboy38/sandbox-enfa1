@@ -93,7 +93,7 @@
     <!-- END NAV -->
     <main class="home">
       <section class="welcome-bg">
-        <img class="welcome-bg -img img-fluid" src="src/images/bg-2.jpg" alt="">
+        <img class="welcome-bg -img img-fluid" src="./src/images/bg-2.jpg" alt="">
         <div class="row align-items-center">
           <div class="col title">
             <p>Envía o transporta tu carga</p>

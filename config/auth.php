@@ -45,6 +45,12 @@ return [
             'driver' => 'token',
             'provider' => 'users',
         ],
+
+        'admins' => [
+          'driver' => 'session',
+          'provider' => 'admins',
+
+        ]
     ],
 
     /*
@@ -69,7 +75,10 @@ return [
             'driver' => 'eloquent',
             'model' => Enfa\User::class,
         ],
-
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => Enfa\Admin::class,
+        ],
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',

@@ -1,7 +1,7 @@
-@extends("web.layoutlogin")
+@extends("web.layoutenviar")
 
 @section('content')
-{{ Form::open(array('url'=> '/login', 'method'=>'POST', 'class'=>"row m-0" ))}}
+{{ Form::open(array('url'=> '/quieroEnviar', 'method'=>'POST', 'class'=>"row m-0" ))}}
 @include('user.login2')
 {{ Form::close()}}
 

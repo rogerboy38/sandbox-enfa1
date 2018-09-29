@@ -1,13 +1,76 @@
 <?php
 namespace Enfa\Http\Controllers;
 
+use Enfa\Http\Controllers\Auth;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+
+
 class LandingController extends Controller
 {
-//use Illuminate\Support\Facades\DB;
-//use Enfa\Models\State as States;
-//use Enfa\State as States;
-//use Illuminate\Support\Facades\View;
+  use RegistersUsers;
+	public function ShowRegistrationForm ( )
+	{
+		return view('auth.register')
+    ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's');
+	}
+	/**
+	 * Where to redirect users after registration.
+	 *
+	 * @var string
+	 */
+	protected $redirectTo = '/userAll';
 
+	/**
+	 * Create a new controller instance.
+	 *
+	 * @return void
+	 */
+	public function __construct()
+	{
+			$this->middleware('guest');
+	}
+	/**
+	 * Get a validator for an incoming registration request.
+	 *
+	 * @param  array  $data
+	 * @return \Illuminate\Contracts\Validation\Validator
+	 */
+	protected function validator(array $data)
+	{
+			return Validator::make($data, [
+					'user_id' => 'required|string|max:255|unique:users',
+					'name' => 'required|string|max:255',
+					'email' => 'required|string|email|max:255|unique:users',
+					'password' => 'required|string|min:6|confirmed',
+			]);
+	}
+	/**
+	 * Create a new user instance after a valid registration.
+	 *
+	 * @param  array  $data
+	 * @return \Enfa\User
+	 */
+	protected function create(array $data)
+	{
+			return \Enfa\Users::create([
+					'user_id' => $data['user_id'],
+					'name' => $data['name'],
+					'email' => $data['email'],
+					'password' => Hash::make($data['password']),
+			]);
+	}
 	/**
 	 * Display a listing of the resource.
 	 *
@@ -16,13 +79,13 @@ class LandingController extends Controller
 	public function index()
 	{
 
+    //$users = \Enfa\Users::All();
+		//return \View::make("landing.create", compact('users'));
 
-	//	$states=State::lists('state', 'state_code');
-		//		return View::make("landing.create", compact('states'));
-		return \View::make("landing.create");
+    $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
+    return View::make('landing.create', compact('cities',$cities));
 
-
-	 	//return View::make('hello');
+	 	//return View::make('welcome');
 	}
 
 
@@ -31,11 +94,15 @@ class LandingController extends Controller
 	 *
 	 * @return Response
 	 */
-	public function create()
+	public function create2()
 	{
-		//return View::make("landing.create");
-	 	//return View::make('hello');
-		return \View::make("landing.content2");
+    return \Enfa\Favoritos::create([
+        'user_id' => $data['user_id'],
+        'mandado' => $data['mandado'],
+        'origen' => $data['origen'],
+        'destino' => $data['destino'],
+        'fecha' => $data['fecha'],
+    ]);
 
 	}
 
@@ -98,16 +165,34 @@ class LandingController extends Controller
 		//
 	}
 
-	public function login()
+
+		/**
+		 * login user.
+		 *
+		 * @param  int  $user
+		 * @return Response
+		 */
+	public function userLogin()
+
+	//	$states=State::lists('state', 'state_code');
+		//		return View::make("landing.create", compact('states'));
+
+
 	{
-
-		return \View::make("user.login");
-
+			return \View::make("user.login")
+      ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's');
 	}
+
+  public function providerLogin()
+  {
+      return \View::make("provider.login")
+        ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's');;
+  }
 
 	public function userRegister()
 	{
-        return \View::make("user.register");
+        return \View::make("user.register")
+        ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's');
   }
 
 	public function quieroEnviar()

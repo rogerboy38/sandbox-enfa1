@@ -19,6 +19,7 @@ class Kernel extends HttpKernel
         \Enfa\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         \Enfa\Http\Middleware\TrustProxies::class,
+
     ];
 
     /**
@@ -35,6 +36,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \Enfa\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
         ],
 
         'api' => [
@@ -59,5 +61,11 @@ class Kernel extends HttpKernel
         'guest' => \Enfa\Http\Middleware\RedirectIfAuthenticated::class,
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'setTheme' => \Shipu\Themevel\Middleware\setTheme::class,
+        'user' => \Enfa\User::class,
+        'csrf' => \Enfa\Http\Middleware\VerifyCsrfToken::class,
+        'admins' =>  \Enfa\Http\Middleware\RedirectIfAuthenticated::class,
+        'theme' => \Shipu\Themevel\Middleware\RouteMiddleware::class,
+
     ];
 }
