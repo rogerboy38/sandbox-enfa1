@@ -53,7 +53,7 @@
         <p>  </p>
         <footer>
             <div class="centered">
-                <h5><i class=""></i> {{ sprintf2($total_distance, 2) }} Km</h5>
+                <h5><i class=""></i> {{ sprintf($total_distance, 2) }} Km</h5>
             </div>
         </footer>
     </div>
@@ -67,7 +67,7 @@
         <p>  </p>
         <footer>
             <div class="centered">
-                <h5><i class=""></i>{{ sprintf2($average_rating, 2) }}</h5>
+                <h5><i class=""></i>{{ sprintf($average_rating, 2) }}</h5>
             </div>
         </footer>
     </div>
@@ -82,7 +82,7 @@
         <p>  </p>
         <footer>
             <div class="centered">
-                <h5><i class=""></i> <?php echo $currency . '.'; ?> {{ sprintf2($total_earnings, 2) }}</h5>
+                <h5><i class=""></i> <?php echo $currency . '.'; ?> {{ sprintf($total_earnings, 2) }}</h5>
             </div>
         </footer>
     </div>
@@ -104,7 +104,7 @@
                 <tr class="trip-basic" data-id="{{ route('ProviderTripDetail',$request->id)}}">
                     <td>{{ date('l, F d Y h:i A',strtotime($request->request_start_time)) }}</td>
                     <td>{{ $request->first_name }} {{ $request->last_name }}</td>
-                    <td>{{ sprintf2($request->total, 2) }}</td>
+                    <td>{{ sprintf($request->total, 2) }}</td>
                     <td>{{ $request->type }}</td>
                 </tr>
                 <tr class="trip-detail" style="display:none;">

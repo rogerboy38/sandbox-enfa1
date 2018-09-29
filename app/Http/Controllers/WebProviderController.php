@@ -459,7 +459,7 @@ public function providerVerify() {
                 $walker->bearing = $angle;
                 $walker->save();
 
-                $walk_location = new WalkLocation;
+                $walk_location = new \Enfa\WalkLocation;
                 $walk_location->request_id = $current_request->id;
                 $walk_location->latitude = $latitude;
                 $walk_location->longitude = $longitude;
@@ -521,7 +521,7 @@ public function providerVerify() {
                 $longitude = $location['long'];
 
                 $request_id = $current_request->id;
-                $walk_location_last = WalkLocation::where('request_id', $request_id)->orderBy('created_at', 'desc')->first();
+                $walk_location_last = \Enfa\WalkLocation::where('request_id', $request_id)->orderBy('created_at', 'desc')->first();
 
                 if ($walk_location_last) {
                     $distance_old = $walk_location_last->distance;
@@ -543,7 +543,7 @@ public function providerVerify() {
                 $walker->bearing = $angle;
                 $walker->save();
 
-                $walk_location = new WalkLocation;
+                $walk_location = new \Enfa\WalkLocation;
                 $walk_location->request_id = $request_id;
                 $walk_location->latitude = $latitude;
                 $walk_location->longitude = $longitude;
@@ -1010,7 +1010,7 @@ public function providerVerify() {
             $walker_id = Session::get('user_id');
             $rating_avg = \Enfa\Walkers::where('id', $walker_id)->first();
             //$average_rating = $rating_avg->rate;
-            $average_rating = $rating_avg;
+            $average_rating = $rating_avg->rate;
 
         } else {
 
@@ -1170,7 +1170,7 @@ public function providerVerify() {
 
     public function updateProviderProfile1() {
         $key = Input::get('service');
-        return ('key = ' . $key);
+        //return ('key = ' . $key);
         foreach ($key as $keyservice)
         {
             $serv = \Enfa\ProviderType::where('id', $key)->first();
@@ -1448,14 +1448,14 @@ public function providerVerify() {
                   $file_name = time();
                   $file_name .= rand();
                   $file_name = sha1($file_name);
-
+                  //aqui foreach del array
                   //$ext = $input->file->getClientOriginalExtension();
-                  $ext = Input::file("1")->getClientOriginalExtension();
+                  $ext = strtolower(Input::file("1")->getClientOriginalExtension());
                   //Input::file("1")->move(public_path() . "/uploads", $file_name . "." . $ext);
 
                   $input = Input::file("1")->move(public_path() . "/uploads", $file_name . "." . $ext);
                   $local_url = $file_name . "." . $ext;
-
+                  //return('file =' . $local_url);
                   //$input->move(public_path() . "/uploads", $file_name . "." . $ext);
                   //$local_url = $file_name . "." . $ext;
 
@@ -1588,7 +1588,7 @@ public function providerVerify() {
         $owner->longitude = $longitude;
         $owner->save();
 
-        $walkerlocation = new WalkLocation;
+        $walkerlocation = new \Enfa\WalkLocation;
         $walkerlocation->request_id = $request->id;
         $walkerlocation->distance = 0.00;
         $walkerlocation->latitude = $latitude;
