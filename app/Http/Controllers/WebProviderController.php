@@ -1,6 +1,6 @@
 <?php
 namespace Enfa\Http\Controllers;
-namespace Enfa\Http\Controllers;
+
 use App\Http\Requests\ProductCreateRequest;
 
 use PayPal\Rest\ApiContext;
@@ -41,7 +41,7 @@ use Enfa\models\Owners as owners;
 use \Redirect;
 use Input;
 use Illuminate\Support\Facades\Validator;
-
+use \Response;
 class WebProviderController extends Controller {
 
 
@@ -280,7 +280,7 @@ class WebProviderController extends Controller {
                 $subject = "Bienvenido a " . ucwords(Config::get('app.website_title')) . ", " . ucwords($walker->first_name . " " . $walker->last_name) . "";
                 email_notification($walker->id, 'walkers', $pattern, $subject, 'walker_register', "imp");
 
-                return \Redirect::to('providerLogin')->with('success', 'Has sido registrado. <br>Por favor activa tu correo para poder iniciar sesion');
+                return \Redirect::to('provider/login')->with('success', 'Has sido registrado. <br>Por favor activa tu correo para poder iniciar sesion');
             } else {
                 return \Redirect::to('socios/registro')->with('error', 'Este email ya esta registrado.');
             }
@@ -311,9 +311,9 @@ class WebProviderController extends Controller {
             email_notification($walker->id, 'walkers', $pattern, $subject, 'forgot_password', 'imp');
 
             // echo $pattern;
-            return \Redirect::to('providerLogin')->with('success', 'Contraseña reiniciada exitosamente. Por favor revisa tu correo.');
+            return \Redirect::to('provider/login')->with('success', 'Contraseña reiniciada exitosamente. Por favor revisa tu correo.');
         } else {
-            return \Redirect::to('providerLogin')->with('error', 'Este correo no esta registrado');
+            return \Redirect::to('provider/login')->with('error', 'Este correo no esta registrado');
         }
     }
       /*
@@ -419,7 +419,7 @@ public function providerVerify() {
 }
     public function providerLogout() {
         Session::flush();
-        return \Redirect::to('providerLogin');
+        return \Redirect::to('provider/login');
     }
 
     public function providerTripChangeState() {

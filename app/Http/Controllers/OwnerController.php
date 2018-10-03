@@ -1,24 +1,55 @@
 <?php
 namespace Enfa\Http\Controllers;
-use Enfa\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Input;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Log;
 
+use App\Http\Requests\ProductCreateRequest;
+
+use PayPal\Rest\ApiContext;
+use PayPal\Auth\OAuthTokenCredential;
+use PayPal\Api\Amount;
+use PayPal\Api\Details;
+use PayPal\Api\Item;
+use PayPal\Api\ItemList;
+use PayPal\Api\Payer;
+use PayPal\Api\Payment as PaymentPaypal;
+use PayPal\Api\RedirectUrls;
+use PayPal\Api\ExecutePayment;
+use PayPal\Api\PaymentExecution;
+use PayPal\Api\Transaction;
+use Illuminate\Support\Facades\Config;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Model;
 use App\Product;
 use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
 use Closure;
-use Illuminate\Support\Facades\Auth;
-
-
+//use Illuminate\Support\Facades\Auth;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\RegistersUsers;
+//use Illuminate\Http\Request;
+use Enfa\User;
+//use Illuminate\Support\Facades\Log;
+//use Theme as Theme;
+use Enfa\models\Owners as owners;
+//use \Redirect;
+use Input;
+use Illuminate\Support\Facades\Validator;
+use URL;
+use Route;
+use Session;
+use Redirect;
+use Auth;
+use \Lang;
+use Illuminate\Support\Facades\Log;
+use Request;
+use \Response;
 class OwnerController extends BaseController
 {
   /*
@@ -37,13 +68,13 @@ class OwnerController extends BaseController
      *
      * @var string
      */
-  protected $redirectTo = '/userAll';
+  protected $redirectTo = '/landing';
   /**
      * Create a new controller instance.
      *
      * @return void
      */
-     public function __construct() {
+  /*   public function __construct() {
 
          $this->middleware(function () {
              if (!Auth::check()) {
@@ -51,14 +82,48 @@ class OwnerController extends BaseController
                  $routeName = Route::currentRouteName();
                  Log::info('current route =' . print_r(Route::currentRouteName(), true));
 
-                 if ($routeName != "UserLogin" && $routeName != 'user') {
+                 if ($routeName != "OwnerLogin" && $routeName != 'user') {
                      Session::put('pre_user_login_url', $url);
                  }
                  $response = $this;
-                 return $response;
+                 return('aqui en middleware');
+                 //return $response;
+
              }
          }, array('except' => array('login', 'verify', 'add', 'walker_xml')));
      }
+*/
+/**
+ * Create a new controller instance.
+ *
+ * @return void
+ */
+public function __construct()
+{
+    //parent::__construct();
+    $this->middleware('guest')->except('logout');
+}
+public function ownerVerify() {
+    $email = Input::get('email');
+    $password = Input::get('password');
+    $owners = \Enfa\Owners::where('email', '=', $email)->first();
+    if ($owners && Hash::check($password, $owners->password)) {
+        Session::put('user_id', $owners->id);
+        Session::put('user_name', $owners->first_name . " " . $owners->last_name);
+        Session::put('user_pic', $owners->picture);
+        if (Session::has('pre_login_url')) {
+            $url = Session::get('pre_login_url');
+            Session::forget('pre_login_url');
+            return Redirect::to($url);
+            //return ($url);
+        } else {
+            return Redirect::to('user/details')->with ('_token', 'owner_id');
+//          return Redirect::to('user/request-trip');
+        }
+    } else {
+        return Redirect::to('owner/login')->with('error', 'Invalid email and password');
+    }
+}
 
     /**
     * Get the needed authorization credentials from the request.
@@ -85,10 +150,10 @@ class OwnerController extends BaseController
 
     public function getOwnerData($owner_id, $token, $is_admin) {
 
-        if ($owner_data = \Enfa\Owners::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
+        if ($owner_data = Owner::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
             return $owner_data;
         } elseif ($is_admin) {
-            $owner_data = \Enfa\Owners::where('id', '=', $owner_id)->first();
+            $owner_data = Owner::where('id', '=', $owner_id)->first();
             if (!$owner_data) {
                 return false;
             }
@@ -179,19 +244,19 @@ class OwnerController extends BaseController
       if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
       // check for token validity
       if (is_token_active($owner_data->token_expiry) || $is_admin) {
-      if ($ledger = \Enfa\Ledgers::where('referral_code', $referral_code)->where('owner_id', '!=', $owner_id)->first()) {
+      if ($ledger = Ledger::where('referral_code', $referral_code)->where('owner_id', '!=', $owner_id)->first()) {
       $referred_by = $ledger->owner_id;
-      $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
+      $settings = Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
       $referral_bonus = $settings->value;
 
-      $ledger = \Enfa\Ledgers::find($ledger->id);
+      $ledger = Ledger::find($ledger->id);
       if ($ledger->referral_code != NULL) {
       $ledger->referral_code = $referral_code;
       $ledger->total_referrals = $ledger->total_referrals + 1;
       $ledger->amount_earned = $ledger->amount_earned + $referral_bonus;
       $ledger->save();
 
-      $owner = \Enfa\Owners::find($owner_id);
+      $owner = Owner::find($owner_id);
       $owner->referred_by = $ledger->owner_id;
       $owner->save();
 
@@ -199,9 +264,9 @@ class OwnerController extends BaseController
       } else {
       $response_array = array('success' => false, 'error' => 'Already applied referral code', 'error_code' => 482);
       }
-      } elseif ($ledger = \Enfa\Ledgers::where('referral_code', $referral_code)->where('owner_id', $owner_id)->first()) {
+      } elseif ($ledger = Ledger::where('referral_code', $referral_code)->where('owner_id', $owner_id)->first()) {
       $response_array = array('success' => false, 'error' => 'Can not add your own Referral code', 'error_code' => 483);
-      } elseif ($pcode = \Enfa\PromoCodes::where('coupon_code', $referral_code)->where('type', 2)->where('state', 1)->where('uses', '>', 0)->first()) {
+      } elseif ($pcode = PromoCodes::where('coupon_code', $referral_code)->where('type', 2)->where('state', 1)->where('uses', '>', 0)->first()) {
       $promohistory = PromoHistory::where('user_id', $owner_id)->where('promo_code', $referral_code)->first();
       if (!$promohistory) {
       $promo_code = $pcode->id;
@@ -214,7 +279,7 @@ class OwnerController extends BaseController
       $phist->amount_earned = $pcode->value;
       $phist->save();
       // Add to ledger amount
-      $led = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+      $led = Ledger::where('owner_id', $owner_id)->first();
       if ($led) {
       $led->amount_earned = $led->amount_earned + $pcode->value;
       $led->save();
@@ -231,13 +296,13 @@ class OwnerController extends BaseController
       } else {
       $response_array = array('success' => false, 'error' => 'Promo Code Already Applied.', 'error_code' => 495);
       }
-      } elseif ($pcode = \Enfa\PromoCodes::where('coupon_code', $referral_code)->where('uses', 0)->first()) {
+      } elseif ($pcode = PromoCodes::where('coupon_code', $referral_code)->where('uses', 0)->first()) {
       $response_array = array('success' => false, 'error' => 'Invalid promo code', 'error_code' => 496);
-      } elseif ($pcode = \Enfa\PromoCodes::where('coupon_code', $referral_code)->where('type', 1)->first()) {
+      } elseif ($pcode = PromoCodes::where('coupon_code', $referral_code)->where('type', 1)->first()) {
       $response_array = array('success' => false, 'error' => 'Percentage discount can not be applied here.', 'error_code' => 465);
-      } elseif ($pcode = \Enfa\PromoCodes::where('coupon_code', '!=', $referral_code)->first()) {
+      } elseif ($pcode = PromoCodes::where('coupon_code', '!=', $referral_code)->first()) {
       $response_array = array('success' => false, 'error' => 'Invalid promo code', 'error_code' => 475);
-      } elseif ($pcode = \Enfa\PromoCodes::where('coupon_code', $referral_code, 'state', '!=', 1)->first()) {
+      } elseif ($pcode = PromoCodes::where('coupon_code', $referral_code, 'state', '!=', 1)->first()) {
       $response_array = array('success' => false, 'error' => 'Invalid promo code', 'error_code' => 485);
       } else {
       $response_array = array('success' => false, 'error' => 'Invalid referral code', 'error_code' => 455);
@@ -288,12 +353,12 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     if ($is_skip != 1) {
-                        if ($ledger = \Enfa\Ledgers::where('referral_code', $referral_code)->first()) {
+                        if ($ledger = Ledger::where('referral_code', $referral_code)->first()) {
                             $referred_by = $ledger->owner_id;
                             if ($referred_by != $owner_id) {
                                 if ($owner_data->is_referee) {
-                                    $owner = \Enfa\Owners::find($owner_id);
-                                    $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                    $owner = Owner::find($owner_id);
+                                    $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => false,
                                         'error' => "Sorry, You have apready apply the refereel code.",
@@ -320,28 +385,28 @@ class OwnerController extends BaseController
                                     );
                                     $response_code = 200;
                                 } else {
-                                    $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
+                                    $settings = Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
                                     $refered_user = $settings->value;
 
-                                    $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refereel')->first();
+                                    $settings = Settings::where('key', 'default_referral_bonus_to_refereel')->first();
                                     $referral = $settings->value;
 
-                                    $ledger = \Enfa\Ledgers::find($ledger->id);
+                                    $ledger = Ledger::find($ledger->id);
                                     $ledger->total_referrals = $ledger->total_referrals + 1;
                                     $ledger->amount_earned = $ledger->amount_earned + $refered_user;
                                     $ledger->save();
 
-                                    $ledger1 = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
-                                    $ledger1 = \Enfa\Ledgers::find($ledger1->id);
+                                    $ledger1 = Ledger::where('owner_id', $owner_id)->first();
+                                    $ledger1 = Ledger::find($ledger1->id);
                                     $ledger1->amount_earned = $ledger1->amount_earned + $referral;
                                     $ledger1->save();
 
-                                    $owner = \Enfa\Owners::find($owner_id);
+                                    $owner = Owner::find($owner_id);
                                     $owner->referred_by = $ledger->owner_id;
                                     $owner->is_referee = 1;
                                     $owner->save();
-                                    $owner = \Enfa\Owners::find($owner_id);
-                                    $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                    $owner = Owner::find($owner_id);
+                                    $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => true,
                                         'error' => 'Referral process successfully completed.',
@@ -368,8 +433,8 @@ class OwnerController extends BaseController
                                     $response_code = 200;
                                 }
                             } else {
-                                $owner = \Enfa\Owners::find($owner_id);
-                                $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                $owner = Owner::find($owner_id);
+                                $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                 $response_array = array(
                                     'success' => false,
                                     'error' => "Sorry, You can't apply your refereel code.",
@@ -397,8 +462,8 @@ class OwnerController extends BaseController
                                 $response_code = 200;
                             }
                         } else {
-                            $owner = \Enfa\Owners::find($owner_id);
-                            $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                            $owner = Owner::find($owner_id);
+                            $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                             $response_array = array(
                                 'success' => false,
                                 'error' => 'Invalid referral code',
@@ -426,11 +491,11 @@ class OwnerController extends BaseController
                             $response_code = 200;
                         }
                     } else {
-                        $owner = \Enfa\Owners::find($owner_id);
+                        $owner = Owner::find($owner_id);
                         $owner->is_referee = 1;
                         $owner->save();
-                        $owner = \Enfa\Owners::find($owner_id);
-                        $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                        $owner = Owner::find($owner_id);
+                        $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                         $response_array = array(
                             'success' => true,
                             'error' => 'You have skipped for referral process',
@@ -500,22 +565,22 @@ class OwnerController extends BaseController
             if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
-                    $request = \Enfa\Requests::where('owner_id', '=', $owner_id)->where('status', '=', 1)->orderBy('created_at', 'desc')->first();
+                    $request = Requests::where('owner_id', '=', $owner_id)->where('status', '=', 1)->orderBy('created_at', 'desc')->first();
                     if ($request) {
                         if (isset($request->id)) {
                             if ($request->promo_id) {
                                 $response_array = array('success' => FALSE, 'error' => 'You can not apply multiple code for single trip.', 'error_code' => 411);
                                 $response_code = 200;
                             } else {
-                                $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                                $settings = Settings::where('key', 'promotional_code_activation')->first();
                                 $prom_act = $settings->value;
                                 if ($prom_act) {
                                     if ($request->payment_mode == 0) {
-                                        $settings = \Enfa\Settings::where('key', 'get_promotional_profit_on_card_payment')->first();
+                                        $settings = Settings::where('key', 'get_promotional_profit_on_card_payment')->first();
                                         $prom_act_card = $settings->value;
                                         if ($prom_act_card) {
                                             /* if ($ledger = PromotionalCodes::where('promo_code', $promo_code)->first()) { */
-                                            if ($promos = \Enfa\PromoCodes::where('coupon_code', $promo_code)->where('uses', '>', 0)->where('state', '=', 1)->first()) {
+                                            if ($promos = PromoCodes::where('coupon_code', $promo_code)->where('uses', '>', 0)->where('state', '=', 1)->first()) {
                                                 if ((date("Y-m-d H:i:s") >= date("Y-m-d H:i:s", strtotime(trim($promos->expiry)))) || (date("Y-m-d H:i:s") <= date("Y-m-d H:i:s", strtotime(trim($promos->start_date))))) {
                                                     $response_array = array('success' => FALSE, 'error' => 'Promotional code is not available.', 'error_code' => 505);
                                                     $response_code = 200;
@@ -529,7 +594,7 @@ class OwnerController extends BaseController
                                                         $response_array = array('success' => FALSE, 'error' => 'Promotional code already used.', 'error_code' => 512);
                                                         $response_code = 200;
                                                     } else {
-                                                        $promo_update_counter = \Enfa\PromoCodes::find($promos->id);
+                                                        $promo_update_counter = PromoCodes::find($promos->id);
                                                         $promo_update_counter->uses = $promo_update_counter->uses - 1;
                                                         $promo_update_counter->save();
 
@@ -538,17 +603,17 @@ class OwnerController extends BaseController
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = \Enfa\Owners::find($owner_id);
+                                                        $owner = Owner::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
-                                                        $request = \Enfa\Requests::find($request->id);
+                                                        $request = Requests::find($request->id);
                                                         $request->promo_id = $promos->id;
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = \Enfa\Owners::find($owner_id);
-                                                        $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                                        $owner = Owner::find($owner_id);
+                                                        $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
                                                             'error' => 'Promotional code successfully applied.',
@@ -585,11 +650,11 @@ class OwnerController extends BaseController
                                             $response_code = 200;
                                         }
                                     } else if ($request->payment_mode == 1) {
-                                        $settings = \Enfa\Settings::where('key', 'get_promotional_profit_on_cash_payment')->first();
+                                        $settings = Settings::where('key', 'get_promotional_profit_on_cash_payment')->first();
                                         $prom_act_cash = $settings->value;
                                         if ($prom_act_cash) {
                                             /* if ($ledger = PromotionalCodes::where('promo_code', $promo_code)->first()) { */
-                                            if ($promos = \Enfa\PromoCodes::where('coupon_code', $promo_code)->where('uses', '>', 0)->where('state', '=', 1)->first()) {
+                                            if ($promos = PromoCodes::where('coupon_code', $promo_code)->where('uses', '>', 0)->where('state', '=', 1)->first()) {
                                                 if ((date("Y-m-d H:i:s") >= date("Y-m-d H:i:s", strtotime(trim($promos->expiry)))) || (date("Y-m-d H:i:s") <= date("Y-m-d H:i:s", strtotime(trim($promos->start_date))))) {
                                                     $response_array = array('success' => FALSE, 'error' => 'Promotional code is not available', 'error_code' => 505);
                                                     $response_code = 200;
@@ -603,7 +668,7 @@ class OwnerController extends BaseController
                                                         $response_array = array('success' => FALSE, 'error' => 'Promotional code already used.', 'error_code' => 512);
                                                         $response_code = 200;
                                                     } else {
-                                                        $promo_update_counter = \Enfa\PromoCodes::find($promos->id);
+                                                        $promo_update_counter = PromoCodes::find($promos->id);
                                                         $promo_update_counter->uses = $promo_update_counter->uses - 1;
                                                         $promo_update_counter->save();
 
@@ -612,17 +677,17 @@ class OwnerController extends BaseController
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = \Enfa\Owners::find($owner_id);
+                                                        $owner = Owner::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
-                                                        $request = \Enfa\Requests::find($request->id);
+                                                        $request = Requests::find($request->id);
                                                         $request->promo_id = $promos->id;
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = \Enfa\Owners::find($owner_id);
-                                                        $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                                        $owner = Owner::find($owner_id);
+                                                        $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
                                                             'error' => 'Promotional code successfully applied.',
@@ -830,12 +895,12 @@ class OwnerController extends BaseController
             $response_code = 200;
         } else {
 
-            if (\Enfa\Owner::where('email', '=', $email)->first()||Owner::where('phone', '=', $phone)->first()) {
+            if (Owner::where('email', '=', $email)->first()||Owner::where('phone', '=', $phone)->first()) {
                 $response_array = array('success' => false, 'error' => 'Correo o Telefono ya registrados', 'error_code' => 402);
                 $response_code = 200;
             } else {
                 /* SEND REFERRAL & PROMO INFO */
-                $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+                $settings = Settings::where('key', 'referral_code_activation')->first();
                 $referral_code_activation = $settings->value;
                 if ($referral_code_activation) {
                     $referral_code_activation_txt = "referral on";
@@ -843,7 +908,7 @@ class OwnerController extends BaseController
                     $referral_code_activation_txt = "referral off";
                 }
 
-                $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                $settings = Settings::where('key', 'promotional_code_activation')->first();
                 $promotional_code_activation = $settings->value;
                 if ($promotional_code_activation) {
                     $promotional_code_activation_txt = "promo on";
@@ -851,7 +916,7 @@ class OwnerController extends BaseController
                     $promotional_code_activation_txt = "promo off";
                 }
                 /* SEND REFERRAL & PROMO INFO */
-                $owner = new \Enfa\Owner;
+                $owner = new Owner;
                 $owner->first_name = $first_name;
                 $owner->last_name = $last_name;
                 $owner->email = $email;
@@ -929,11 +994,11 @@ class OwnerController extends BaseController
                   $referral_code .= $owner->id; */
                 regenerate:
                 $referral_code = my_random4_number();
-                if (\Enfa\Ledgers::where('referral_code', $referral_code)->count()) {
+                if (Ledger::where('referral_code', $referral_code)->count()) {
                     goto regenerate;
                 }
                 /* Referral entry */
-                $ledger = new \Enfa\Ledgers;
+                $ledger = new Ledger;
                 $ledger->owner_id = $owner->id;
                 $ledger->referral_code = $referral_code;
                 $ledger->save();
@@ -980,7 +1045,7 @@ class OwnerController extends BaseController
                 } else {
                     $owner_time = $owner->timezone;
                 }
-                $settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
+                $settings = Settings::where('key', 'admin_email_address')->first();
                 $admin_email = $settings->value;
                 $pattern = array('admin_eamil' => $admin_email, 'name' => ucwords($owner->first_name . " " . $owner->last_name), 'web_url' => web_url());
                 $subject = "Bienvenido a " . ucwords(Config::get('app.website_title')) . ", " . ucwords($owner->first_name . " " . $owner->last_name) . "";
@@ -1022,8 +1087,7 @@ class OwnerController extends BaseController
         return $response;
     }
 
-    public function login() {
-  /*
+    /*public function login() {
         $login_by = Input::get('login_by');
         $device_token = Input::get('device_token');
         $device_type = Input::get('device_type');
@@ -1053,7 +1117,7 @@ class OwnerController extends BaseController
                 $response_code = 200;
                 Log::error('Validation error during manual login for owner = ' . print_r($error_messages, true));
             } else {
-                if ($owner = \Enfa\Owners::where('email', '=', $email)->first()) {
+                if ($owner = Owner::where('email', '=', $email)->first()) {
                     if (Hash::check($password, $owner->password)) {
                         if ($login_by !== "manual") {
                             $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
@@ -1068,9 +1132,9 @@ class OwnerController extends BaseController
                             $owner->token = generate_token();
                             $owner->token_expiry = generate_expiry();
                             $owner->save();
-    */
+*/
                             /* SEND REFERRAL & PROMO INFO */
-    /*                        $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+/*                            $settings = Settings::where('key', 'referral_code_activation')->first();
                             $referral_code_activation = $settings->value;
                             if ($referral_code_activation) {
                                 $referral_code_activation_txt = "referral on";
@@ -1078,7 +1142,7 @@ class OwnerController extends BaseController
                                 $referral_code_activation_txt = "referral off";
                             }
 
-                            $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                            $settings = Settings::where('key', 'promotional_code_activation')->first();
                             $promotional_code_activation = $settings->value;
                             if ($promotional_code_activation) {
                                 $promotional_code_activation_txt = "promo on";
@@ -1087,7 +1151,7 @@ class OwnerController extends BaseController
                             }
 */
                             /* SEND REFERRAL & PROMO INFO */
-/*                            $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+/*                            $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
 
                             $response_array = array(
                                 'success' => true,
@@ -1117,7 +1181,7 @@ class OwnerController extends BaseController
                                 'is_promo_active_txt' => $promotional_code_activation_txt,
                             );
 
-                            $dog = \Enfa\Dog::find($owner->dog_id);
+                            $dog = Dog::find($owner->dog_id);
                             if ($dog !== NULL) {
                                 $response_array = array_merge($response_array, array(
                                     'dog_id' => $dog->id,
@@ -1163,7 +1227,7 @@ class OwnerController extends BaseController
                 $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                 $response_code = 200;
             } else {
-                if ($owner = \Enfa\Owners::where('social_unique_id', '=', $social_unique_id)->first()) {
+                if ($owner = Owner::where('social_unique_id', '=', $social_unique_id)->first()) {
                     if (!in_array($login_by, array('facebook', 'google'))) {
                         $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
                         $response_code = 200;
@@ -1199,7 +1263,7 @@ class OwnerController extends BaseController
                             'is_referee' => $owner->is_referee,
                         );
 
-                        $dog = \Enfa\Dog::find($owner->dog_id);
+                        $dog = Dog::find($owner->dog_id);
                         if ($dog !== NULL) {
                             $response_array = array_merge($response_array, array(
                                 'dog_id' => $dog->id,
@@ -1225,7 +1289,12 @@ class OwnerController extends BaseController
 
         $response = Response::json($response_array, $response_code);
         return $response;
+    }
 */
+    public function ShowLoginOwner()
+    {
+
+      return View::make('provider.ownerLogin');
     }
 
     public function details() {
@@ -1263,7 +1332,7 @@ class OwnerController extends BaseController
                     if (is_token_active($owner_data->token_expiry) || $is_admin) {
                         // Do necessary operations
 
-                        $owner = \Enfa\Owners::find($owner_data->id);
+                        $owner = \Enfa\Owner::find($owner_data->id);
                         $owner->address = $address;
                         $owner->state = $state;
                         $owner->zipcode = $zipcode;
@@ -1333,7 +1402,7 @@ class OwnerController extends BaseController
                     $response_code = 200;
                 }
             }
-        }
+        } 
         $response = Response::json($response_array, $response_code);
         return $response;
     }
@@ -1401,7 +1470,7 @@ class OwnerController extends BaseController
                                 }
                                 $payment->save();
 
-                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1425,7 +1494,7 @@ class OwnerController extends BaseController
                                 );
                                 $response_code = 200;
                             } else {
-                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1478,7 +1547,7 @@ class OwnerController extends BaseController
                                 }
                                 $payment->save();
 
-                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1503,7 +1572,7 @@ class OwnerController extends BaseController
                                 );
                                 $response_code = 200;
                             } else {
-                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1582,16 +1651,16 @@ class OwnerController extends BaseController
             if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
-                    if ($payment = \Enfa\Payment::find($card_id)) {
+                    if ($payment = Payment::find($card_id)) {
                         if ($payment->owner_id == $owner_id) {
 
-                            $pdn = \Enfa\Payment::where('id', $card_id)->first();
+                            $pdn = Payment::where('id', $card_id)->first();
                             $check = trim($pdn->is_default);
                             Payment::find($card_id)->delete();
                             if ($check == 1) {
                                 $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                                 if ($card_count) {
-                                    $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->first();
+                                    $paymnt = Payment::where('owner_id', $owner_id)->first();
                                     $paymnt->is_default = 1;
                                     $paymnt->save();
                                 }
@@ -1600,7 +1669,7 @@ class OwnerController extends BaseController
                             $payments = array();
                             $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                             if ($card_count) {
-                                $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($paymnt as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1684,13 +1753,13 @@ class OwnerController extends BaseController
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     // Do necessary operations
 
-                    /* $ledger_count = \Enfa\Ledgers::where('referral_code', $code)->count();
+                    /* $ledger_count = Ledger::where('referral_code', $code)->count();
                       if ($ledger_count > 0) {
                       $response_array = array('success' => false, 'error' => 'This Code already is taken by another user', 'error_code' => 484);
                       } else {
-                      $led = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+                      $led = Ledger::where('owner_id', $owner_id)->first();
                       if ($led) {
-                      $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+                      $ledger = Ledger::where('owner_id', $owner_id)->first();
                       } else {
                       $ledger = new Ledger;
                       $ledger->owner_id = $owner_id;
@@ -1720,11 +1789,11 @@ class OwnerController extends BaseController
                         $ledger->referral_code = $referral_code;
                         $ledger->save();
                     }
-                    /* $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+                    /* $ledger = Ledger::where('owner_id', $owner_id)->first();
                       $ledger->referral_code = $code;
                       $ledger->save(); */
                     /* SEND REFERRAL & PROMO INFO */
-                    $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+                    $settings = Settings::where('key', 'referral_code_activation')->first();
                     $referral_code_activation = $settings->value;
                     if ($referral_code_activation) {
                         $referral_code_activation_txt = "referral on";
@@ -1732,7 +1801,7 @@ class OwnerController extends BaseController
                         $referral_code_activation_txt = "referral off";
                     }
 
-                    $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                    $settings = Settings::where('key', 'promotional_code_activation')->first();
                     $promotional_code_activation = $settings->value;
                     if ($promotional_code_activation) {
                         $promotional_code_activation_txt = "promo on";
@@ -1815,7 +1884,7 @@ class OwnerController extends BaseController
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     // Do necessary operations
 
-                    $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+                    $ledger = Ledger::where('owner_id', $owner_id)->first();
                     if ($ledger) {
                         $response_array = array(
                             'success' => true,
@@ -1884,7 +1953,7 @@ class OwnerController extends BaseController
                     $payments = array();
                     $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                     if ($card_count) {
-                        $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                        $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                         foreach ($paymnt as $data1) {
                             $default = $data1->is_default;
                             if ($default == 1) {
@@ -1966,7 +2035,7 @@ class OwnerController extends BaseController
                     // Do necessary operations
                     Payment::where('owner_id', $owner_id)->update(array('is_default' => 0));
                     Payment::where('owner_id', $owner_id)->where('id', $default_card_id)->update(array('is_default' => 1));
-                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                    $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                     foreach ($payment_data as $data1) {
                         $default = $data1->is_default;
                         if ($default == 1) {
@@ -1983,7 +2052,7 @@ class OwnerController extends BaseController
                         $data['is_default'] = $default;
                         array_push($payments, $data);
                     }
-                    $owner = \Enfa\Owners::find($owner_id);
+                    $owner = Owner::find($owner_id);
 
                     $response_array = array(
                         'success' => true,
@@ -2059,35 +2128,35 @@ class OwnerController extends BaseController
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     // Do necessary operations
                     if ($from != "" && $to_date != "") {
-                        $request_data = DB::table('requests')
-                                ->where('requests.owner_id', $owner_id)
+                        $request_data = DB::table('request')
+                                ->where('request.owner_id', $owner_id)
                                 ->where('is_completed', 1)
                                 ->where('is_cancelled', 0)
                                 ->whereBetween('request_start_time', array($from, $to_date))
-                                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
-                                ->leftJoin('walker_services', 'walkers.id', '=', 'walker_services.provider_id')
+                                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
+                                ->leftJoin('walker_services', 'walker.id', '=', 'walker_services.provider_id')
                                 ->leftJoin('walker_type', 'walker_type.id', '=', 'walker_services.type')
-                                ->leftJoin('request_services', 'request_services.request_id', '=', 'requests.id')
-                                ->select('requests.*', 'requests.request_start_time', 'requests.promo_code', 'walkers.first_name', 'walkers.id as walker_id', 'walkers.last_name', 'walkers.phone', 'walkers.email', 'walkers.picture', 'walkers.bio', 'walkers.rate', 'walker_type.name as type', 'walker_type.icon', 'requests.distance', 'requests.time', 'request_services.base_price as req_base_price', 'request_services.distance_cost as req_dis_cost', 'request_services.time_cost as req_time_cost', 'request_services.type as req_typ', 'requests.total')
-								->groupBy('requests.id')
+                                ->leftJoin('request_services', 'request_services.request_id', '=', 'request.id')
+                                ->select('request.*', 'request.request_start_time', 'request.promo_code', 'walker.first_name', 'walker.id as walker_id', 'walker.last_name', 'walker.phone', 'walker.email', 'walker.picture', 'walker.bio', 'walker.rate', 'walker_type.name as type', 'walker_type.icon', 'request.distance', 'request.time', 'request_services.base_price as req_base_price', 'request_services.distance_cost as req_dis_cost', 'request_services.time_cost as req_time_cost', 'request_services.type as req_typ', 'request.total')
+								->groupBy('request.id')
                                 ->get();
                     } else {
-                        $request_data = DB::table('requests')
-                                ->where('requests.owner_id', $owner_id)
+                        $request_data = DB::table('request')
+                                ->where('request.owner_id', $owner_id)
                                 ->where('is_completed', 1)
                                 ->where('is_cancelled', 0)
-                                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
-                                ->leftJoin('walker_services', 'walkers.id', '=', 'walker_services.provider_id')
+                                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
+                                ->leftJoin('walker_services', 'walker.id', '=', 'walker_services.provider_id')
                                 ->leftJoin('walker_type', 'walker_type.id', '=', 'walker_services.type')
-                                ->leftJoin('request_services', 'request_services.request_id', '=', 'requests.id')
-                                ->select('requests.*', 'requests.request_start_time', 'requests.promo_code', 'walkers.first_name', 'walkers.id as walker_id', 'walkers.last_name', 'walkers.phone', 'walkers.email', 'walkers.picture', 'walkers.bio', 'walkers.rate', 'walker_type.name as type', 'walker_type.icon', 'requests.distance', 'requests.time', 'request_services.base_price as req_base_price', 'request_services.distance_cost as req_dis_cost', 'request_services.time_cost as req_time_cost', 'request_services.type as req_typ', 'requests.total')
-								->groupBy('requests.id')
+                                ->leftJoin('request_services', 'request_services.request_id', '=', 'request.id')
+                                ->select('request.*', 'request.request_start_time', 'request.promo_code', 'walker.first_name', 'walker.id as walker_id', 'walker.last_name', 'walker.phone', 'walker.email', 'walker.picture', 'walker.bio', 'walker.rate', 'walker_type.name as type', 'walker_type.icon', 'request.distance', 'request.time', 'request_services.base_price as req_base_price', 'request_services.distance_cost as req_dis_cost', 'request_services.time_cost as req_time_cost', 'request_services.type as req_typ', 'request.total')
+								->groupBy('request.id')
                                 ->get();
                     }
 
                     $requests = array();
 
-                    $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
+                    $settings = Settings::where('key', 'default_distance_unit')->first();
                     $unit = $settings->value;
                     if ($unit == 0) {
                         $unit_set = 'kms';
@@ -2097,24 +2166,24 @@ class OwnerController extends BaseController
 
                     /* $currency_selected = Keywords::find(5); */
                     foreach ($request_data as $data) {
-                        $request_typ = \Enfa\ProviderType::where('id', '=', $data->req_typ)->first();
+                        $request_typ = ProviderType::where('id', '=', $data->req_typ)->first();
 
-                        /* $setbase_price = \Enfa\Settings::where('key', 'base_price')->first();
-                          $setdistance_price = \Enfa\Settings::where('key', 'price_per_unit_distance')->first();
-                          $settime_price = \Enfa\Settings::where('key', 'price_per_unit_time')->first(); */
+                        /* $setbase_price = Settings::where('key', 'base_price')->first();
+                          $setdistance_price = Settings::where('key', 'price_per_unit_distance')->first();
+                          $settime_price = Settings::where('key', 'price_per_unit_time')->first(); */
                         $setbase_distance = $request_typ->base_distance;
                         $setbase_price = $request_typ->base_price;
                         $setdistance_price = $request_typ->price_per_unit_distance;
                         $settime_price = $request_typ->price_per_unit_time;
 
-                        $locations = \Enfa\WalkLocation::where('request_id', $data->id)->orderBy('id')->get();
+                        $locations = WalkLocation::where('request_id', $data->id)->orderBy('id')->get();
                         $start = $end = $map = "";
                         $id = $data->id;
                         if (count($locations) >= 1) {
-                            $start = \Enfa\WalkLocation::where('request_id', $id)
+                            $start = WalkLocation::where('request_id', $id)
                                     ->orderBy('id')
                                     ->first();
-                            $end = \Enfa\WalkLocation::where('request_id', $id)
+                            $end = WalkLocation::where('request_id', $id)
                                     ->orderBy('id', 'desc')
                                     ->first();
                             $map = "https://maps-api-ssl.google.com/maps/api/staticmap?size=249x249&scale=2&markers=shadow:true|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-start@2x.png|$start->latitude,$start->longitude&markers=shadow:false|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-finish@2x.png|$end->latitude,$end->longitude&path=color:0x2dbae4ff|weight:4";
@@ -2162,7 +2231,7 @@ class OwnerController extends BaseController
                         $discount = 0;
                         if ($data->promo_code != "") {
                             if ($data->promo_code != "") {
-                                $promo_code = \Enfa\PromoCodes::where('id', $data->promo_code)->first();
+                                $promo_code = PromoCodes::where('id', $data->promo_code)->first();
                                 if ($promo_code) {
                                     $promo_value = $promo_code->value;
                                     $promo_type = $promo_code->type;
@@ -2179,7 +2248,7 @@ class OwnerController extends BaseController
 
                         $request['promo_discount'] = ($discount);
 
-                        $is_multiple_service = \Enfa\Settings::where('key', 'allow_multiple_service')->first();
+                        $is_multiple_service = Settings::where('key', 'allow_multiple_service')->first();
                         if ($is_multiple_service->value == 0) {
 
                             if ($data->req_base_price) {
@@ -2211,15 +2280,15 @@ class OwnerController extends BaseController
                             $request['actual_total'] = ($data->total + $data->ledger_payment + $discount);
                             $request['type'] = $data->type;
                             $request['type_icon'] = $data->icon;
-                            $rserv = \Enfa\RequestServices::where('request_id', $data->id)->get();
+                            $rserv = RequestServices::where('request_id', $data->id)->get();
                             $typs = array();
                             $typi = array();
                             $typp = array();
                             $total_price = 0;
 
                             foreach ($rserv as $typ) {
-                                $typ1 = \Enfa\ProviderType::where('id', $typ->type)->first();
-                                $typ_price = \Enfa\ProviderServices::where('provider_id', $data->confirmed_walker)->where('type', $typ->type)->first();
+                                $typ1 = ProviderType::where('id', $typ->type)->first();
+                                $typ_price = ProviderServices::where('provider_id', $data->confirmed_walker)->where('type', $typ->type)->first();
 
                                 if ($typ_price->base_price > 0) {
                                     $typp1 = 0.00;
@@ -2242,15 +2311,15 @@ class OwnerController extends BaseController
 
 
                         } else {
-                            $rserv = \Enfa\RequestServices::where('request_id', $data->id)->get();
+                            $rserv = RequestServices::where('request_id', $data->id)->get();
                             $typs = array();
                             $typi = array();
                             $typp = array();
                             $total_price = 0;
 
                             foreach ($rserv as $typ) {
-                                $typ1 = \Enfa\ProviderType::where('id', $typ->type)->first();
-                                $typ_price = \Enfa\ProviderServices::where('provider_id', $data->confirmed_walker)->where('type', $typ->type)->first();
+                                $typ1 = ProviderType::where('id', $typ->type)->first();
+                                $typ_price = ProviderServices::where('provider_id', $data->confirmed_walker)->where('type', $typ->type)->first();
 
                                 if ($typ_price->base_price > 0) {
                                     $typp1 = 0.00;
@@ -2283,11 +2352,11 @@ class OwnerController extends BaseController
                             $request['total'] = ($total_price);
                         }
 
-                        $rate = \Enfa\WalkerReview::where('request_id', $data->id)->where('walker_id', $data->confirmed_walker)->first();
+                        $rate = WalkerReview::where('request_id', $data->id)->where('walker_id', $data->confirmed_walker)->first();
                         if ($rate != NULL) {
-                            $request['walkers']['rating'] = $rate->rating;
+                            $request['walker']['rating'] = $rate->rating;
                         } else {
-                            $request['walkers']['rating'] = '0.0';
+                            $request['walker']['rating'] = '0.0';
                         }
 
                         /* $request['currency'] = $currency_selected->keyword; */
@@ -2303,14 +2372,14 @@ class OwnerController extends BaseController
                         $request['promo_id'] = $data->promo_id;
                         $request['promo_code'] = $data->promo_code;
                         $request['currency'] = Config::get('app.generic_keywords.Currency');
-                        $request['walkers']['first_name'] = $data->first_name;
-                        $request['walkers']['last_name'] = $data->last_name;
-                        $request['walkers']['phone'] = $data->phone;
-                        $request['walkers']['email'] = $data->email;
-                        $request['walkers']['picture'] = $data->picture;
-                        $request['walkers']['bio'] = $data->bio;
-                        $request['walkers']['type'] = $data->type;
-                        /* $request['walkers']['rating'] = $data->rate; */
+                        $request['walker']['first_name'] = $data->first_name;
+                        $request['walker']['last_name'] = $data->last_name;
+                        $request['walker']['phone'] = $data->phone;
+                        $request['walker']['email'] = $data->email;
+                        $request['walker']['picture'] = $data->picture;
+                        $request['walker']['bio'] = $data->bio;
+                        $request['walker']['type'] = $data->type;
+                        /* $request['walker']['rating'] = $data->rate; */
                         array_push($requests, $request);
                     }
 
@@ -2395,7 +2464,7 @@ class OwnerController extends BaseController
                         if ($old_password != "" || $old_password != NULL) {
                             if (Hash::check($old_password, $owner_data->password)) {
                                 // Do necessary operations
-                                $owner = \Enfa\Owners::find($owner_id);
+                                $owner = Owner::find($owner_id);
                                 if ($first_name) {
                                     $owner->first_name = $first_name;
                                 }
@@ -2475,10 +2544,10 @@ class OwnerController extends BaseController
                                     $owner->timezone = Input::get('timezone');
                                 }
                                 $owner->save();
-                                $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                                $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
 
                                 /* SEND REFERRAL & PROMO INFO */
-                                $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+                                $settings = Settings::where('key', 'referral_code_activation')->first();
                                 $referral_code_activation = $settings->value;
                                 if ($referral_code_activation) {
                                     $referral_code_activation_txt = "referral on";
@@ -2486,7 +2555,7 @@ class OwnerController extends BaseController
                                     $referral_code_activation_txt = "referral off";
                                 }
 
-                                $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                                $settings = Settings::where('key', 'promotional_code_activation')->first();
                                 $promotional_code_activation = $settings->value;
                                 if ($promotional_code_activation) {
                                     $promotional_code_activation_txt = "promo on";
@@ -2533,7 +2602,7 @@ class OwnerController extends BaseController
                         }
                     } else {
                         // Do necessary operations
-                        $owner = \Enfa\Owners::find($owner_id);
+                        $owner = Owner::find($owner_id);
                         if ($first_name) {
                             $owner->first_name = $first_name;
                         }
@@ -2610,10 +2679,10 @@ class OwnerController extends BaseController
                             $owner->timezone = Input::get('timezone');
                         }
                         $owner->save();
-                        $code_data = \Enfa\Ledgers::where('owner_id', '=', $owner->id)->first();
+                        $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
 
                         /* SEND REFERRAL & PROMO INFO */
-                        $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+                        $settings = Settings::where('key', 'referral_code_activation')->first();
                         $referral_code_activation = $settings->value;
                         if ($referral_code_activation) {
                             $referral_code_activation_txt = "referral on";
@@ -2621,7 +2690,7 @@ class OwnerController extends BaseController
                             $referral_code_activation_txt = "referral off";
                         }
 
-                        $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                        $settings = Settings::where('key', 'promotional_code_activation')->first();
                         $promotional_code_activation = $settings->value;
                         if ($promotional_code_activation) {
                             $promotional_code_activation_txt = "promo on";
@@ -2710,7 +2779,7 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     if ($cash_or_card != 1) {
-                        $card_count = \Enfa\Payment::where('owner_id', '=', $owner_id)->count();
+                        $card_count = Payment::where('owner_id', '=', $owner_id)->count();
                         if ($card_count <= 0) {
                             $response_array = array('success' => false, 'error' => "Please add card first for payment.", 'error_code' => 417);
                             $response_code = 200;
@@ -2719,8 +2788,8 @@ class OwnerController extends BaseController
                         }
                     }
                     // Do necessary operations
-                    $owner = \Enfa\Owners::find($owner_id);
-                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                    $owner = Owner::find($owner_id);
+                    $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                     foreach ($payment_data as $data1) {
                         $default = $data1->is_default;
                         if ($default == 1) {
@@ -2739,7 +2808,7 @@ class OwnerController extends BaseController
                         $data['is_default'] = $default;
                         array_push($payments, $data);
                     }
-                    if ($request = \Enfa\Requests::find($request_id)) {
+                    if ($request = Requests::find($request_id)) {
                         $request->payment_mode = $cash_or_card;
                         $request->save();
 
@@ -2838,7 +2907,7 @@ class OwnerController extends BaseController
                     $payments = array();
                     $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                     if ($card_count) {
-                        $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                        $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                         foreach ($paymnt as $data1) {
                             $default = $data1->is_default;
                             if ($default == 1) {
@@ -2914,9 +2983,9 @@ class OwnerController extends BaseController
                         $response = Response::json($response_array, $response_code);
                         return $response;
                     }
-                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->where('is_default', 1)->first();
+                    $payment_data = Payment::where('owner_id', $owner_id)->where('is_default', 1)->first();
                     if (!$payment_data)
-                        $payment_data = \Enfa\Payment::where('owner_id', $request->owner_id)->first();
+                        $payment_data = Payment::where('owner_id', $request->owner_id)->first();
 
                     if ($payment_data) {
                         $customer_id = $payment_data->customer_id;
@@ -2932,7 +3001,7 @@ class OwnerController extends BaseController
                                 );
                             } catch (Stripe_InvalidRequestError $e) {
                                 // Invalid parameters were supplied to Stripe's API
-                                $ownr = \Enfa\Owners::find($owner_id);
+                                $ownr = Owner::find($owner_id);
                                 $ownr->debt = $total;
                                 $ownr->save();
                                 $response_array = array('error' => $e->getMessage());
@@ -3012,7 +3081,7 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     Log::info('paypal_id = ' . print_r($paypal_id, true));
-                    $req = \Enfa\Requests::find($request_id);
+                    $req = Requests::find($request_id);
                     Log::info('req = ' . print_r($req, true));
                     $req->is_paid = 1;
                     $req->payment_id = $paypal_id;
@@ -3180,10 +3249,10 @@ class OwnerController extends BaseController
 
                     foreach ($phones as $key) {
 
-                        $owner = \Enfa\Owners::where('id', $owner_id)->first();
+                        $owner = Owner::where('id', $owner_id)->first();
                         $secret = str_random(6);
 
-                        $request = \Enfa\Requests::where('id', $request_id)->first();
+                        $request = Requests::where('id', $request_id)->first();
                         $request->security_key = $secret;
                         $request->save();
                         $msg = $owner->first_name . ' ' . $owner->last_name . ' ETA : ' . $eta;
@@ -3239,21 +3308,21 @@ class OwnerController extends BaseController
                     // Payment options allowed
                     $payment_options = array();
 
-                    $payments = \Enfa\Payment::where('owner_id', $owner_id)->count();
+                    $payments = Payment::where('owner_id', $owner_id)->count();
 
                     if ($payments) {
                         $payment_options['stored_cards'] = 1;
                     } else {
                         $payment_options['stored_cards'] = 0;
                     }
-                    $codsett = \Enfa\Settings::where('key', 'cod')->first();
+                    $codsett = Settings::where('key', 'cod')->first();
                     if ($codsett->value == 1) {
                         $payment_options['cod'] = 1;
                     } else {
                         $payment_options['cod'] = 0;
                     }
 
-                    $paypalsett = \Enfa\Settings::where('key', 'paypal')->first();
+                    $paypalsett = Settings::where('key', 'paypal')->first();
                     if ($paypalsett->value == 1) {
                         $payment_options['paypal'] = 1;
                     } else {
@@ -3262,7 +3331,7 @@ class OwnerController extends BaseController
 
                     Log::info('payment_options = ' . print_r($payment_options, true));
                     /* SEND REFERRAL & PROMO INFO */
-                    $settings = \Enfa\Settings::where('key', 'referral_code_activation')->first();
+                    $settings = Settings::where('key', 'referral_code_activation')->first();
                     $referral_code_activation = $settings->value;
                     if ($referral_code_activation) {
                         $referral_code_activation_txt = "referral on";
@@ -3270,7 +3339,7 @@ class OwnerController extends BaseController
                         $referral_code_activation_txt = "referral off";
                     }
 
-                    $settings = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
+                    $settings = Settings::where('key', 'promotional_code_activation')->first();
                     $promotional_code_activation = $settings->value;
                     if ($promotional_code_activation) {
                         $promotional_code_activation_txt = "promo on";
@@ -3280,7 +3349,7 @@ class OwnerController extends BaseController
                     /* SEND REFERRAL & PROMO INFO */
 
                     // Promo code allowed
-                    /* $promosett = \Enfa\Settings::where('key', 'promo_code')->first(); */
+                    /* $promosett = Settings::where('key', 'promo_code')->first(); */
                     if ($promotional_code_activation == 1) {
                         $promo_allow = 1;
                     } else {
@@ -3332,7 +3401,7 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry)) {
                     /* $currency_selected = Keywords::find(5); */
-                    $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
+                    $ledger = Ledger::where('owner_id', $owner_id)->first();
                     if ($ledger) {
                         $credits['balance'] = ($ledger->amount_earned - $ledger->amount_spent);
                         /* $credits['currency'] = $currency_selected->keyword; */

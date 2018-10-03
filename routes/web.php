@@ -102,7 +102,7 @@ Route::post('/walker/getschedule', 'WalkerController@get_schedule');
 // Owner APIs
 //user Routes
 //Route::post('/user/login', 'OwnerController@login');
-Route::get('/user/login', array('as' => 'OwnerLogin', 'uses' => 'OwnerController@login'));
+//Route::get('/user/login', array('as' => 'OwnerLogin', 'uses' => 'OwnerController@login'));
 
 
 
@@ -111,6 +111,7 @@ Route::post('/user/register', 'OwnerController@register');
 Route::post('/user/location', 'DogController@set_location');
 
 Route::any('/user/details', 'OwnerController@details');
+//Route::post('/user/details', 'OwnerController@details');
 
 Route::post('/user/addcardtoken', 'OwnerController@addcardtoken');
 
@@ -127,7 +128,7 @@ Route::post('/user/selectcard', 'OwnerController@select_card');
 
 Route::post('/user/card_selection', 'OwnerController@card_selection');
 
-Route::get('/user/profile', 'OwnerController@getProfile');
+//Route::get('/user/profile', 'OwnerController@getProfile');
 
 Route::any('/user/thing', 'DogController@create');
 

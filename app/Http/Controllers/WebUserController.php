@@ -492,7 +492,7 @@ class WebUserController extends Controller {
                 }
             }
 
-            $walker_detail = WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
+            $walker_detail = \Enfa\WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
 
             $eta = \Enfa\Settings::where('key', '=', 'get_destination')->first();
             $eta_value = $eta->value;
@@ -1518,9 +1518,9 @@ $conn->close();
                 ->where('is_completed', 1)
                 ->leftJoin('walkers', 'walkers.id', '=', 'requests.confirmed_walker')
                 ->leftJoin('walker_services', 'walkers.id', '=', 'walker_services.provider_id')
-                ->leftJoin('walker_type', 'walker_type.id', '=', 'walker_services.type')
+                ->leftJoin('walker_types', 'walker_types.id', '=', 'walker_services.type')
                 ->orderBy('request_start_time', 'desc')
-                ->select('requests.id', 'request_start_time', 'walkers.first_name', 'walkers.last_name', 'requests.total as total', 'walker_type.name as type')
+                ->select('requests.id', 'request_start_time', 'walkers.first_name', 'walkers.last_name', 'requests.total as total', 'walker_types.name as type')
                 ->get();
 
         /* $var = Keywords::where('id', 4)->first(); */
@@ -1541,20 +1541,20 @@ $conn->close();
 
      public function userProfile(Request $request, \Enfa\Sessions $id ) {
        //public function userProfile(Request $request, Users $owner_id) {
-        /*$user = array();
-        $email = '';*/
+        $user = array();
+        $email = '';
         //$key = $request->session()->get('key');
         $key = Session::get('key');
-        //$this->authorize('userVerify', auth()->user());*/
+        //$this->authorize('userVerify', auth()->user());
         $owner_id = Session::get('user_id');
-        /*$user = \Enfa\Owners::All('id', 'picture', 'first_name','last_name', 'email')->where('owners.id', '=', $owner_id);
+        $user = \Enfa\Owners::All('id', 'picture', 'first_name','last_name', 'email')->where('owners.id', '=', $owner_id);
         return View::make('web.userProfile')
                         ->with('title', 'My Profile')
                         ->with('user', $user[$owner_id])
                         ->with('requests', $requests);
 
-                        //->with('user', $user[$owner_id]);*/
-        return ( 'owner' . $owner_id .'key= '. $key);
+                        //->with('user', $user[$owner_id]);
+      //  return ( 'owners' . $owner_id .'key= '. $key);
     }
 
     /**

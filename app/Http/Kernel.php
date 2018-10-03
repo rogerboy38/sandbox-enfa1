@@ -62,6 +62,7 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'setTheme' => \Shipu\Themevel\Middleware\setTheme::class,
+        'owner' => \Enfa\Owners::class,
         'user' => \Enfa\User::class,
         'csrf' => \Enfa\Http\Middleware\VerifyCsrfToken::class,
         'admins' =>  \Enfa\Http\Middleware\RedirectIfAuthenticated::class,
