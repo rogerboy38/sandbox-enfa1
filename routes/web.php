@@ -546,8 +546,8 @@ Route::get('userpaypalstatus', array('as' => 'userpaypalstatus', 'uses' => 'WebU
 
 Route::get('userpaypalipn', array('as' => 'userpaypalipn', 'uses' => 'WebUserController@userpaypalipn'));
 
-Route::get('/user/request-trip', array('as' => 'userrequestTrip', 'uses' => 'WebUserController@userRequestTrip2'));
-//Route::get('/user/request-trip2', array('as' => 'userrequestTrip', 'uses' => 'WebUserController@userRequestTrip'));
+Route::get('/user/request-trip', array('as' => 'userrequestTrip', 'uses' => 'WebUserController@userRequestTrip'));
+Route::get('/user/request-trip2', array('as' => 'userrequestTrip2', 'uses' => 'WebUserController@userRequestTrip2'));
 
 Route::get('/user/skipReview/{id}', array('as' => 'userSkipReview', 'uses' => 'WebUserController@userSkipReview'));
 
