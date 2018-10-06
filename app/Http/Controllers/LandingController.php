@@ -83,7 +83,9 @@ class LandingController extends Controller
 		//return \View::make("landing.create", compact('users'));
 
     $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
-    return View::make('landing.create', compact('cities',$cities));
+    $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+    $types_dim = \Enfa\ProviderType::where('is_visible', '=', 2)->get();
+    return View::make('landing.create', compact('cities',$cities, 'types',$types, 'types_dim',$types_dim));
 
 	 	//return View::make('welcome');
 	}

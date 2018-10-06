@@ -86,7 +86,7 @@ class WebUserController extends Controller {
         }
 
         $this->middleware(function() {
-            if (!Session::has('user_id')) {
+            if (Session::has('user_id')) {
                 Session::put('pre_login_url', URL::current());
                 return Redirect::to('/usuarios/entrar');
             } else {
@@ -1445,9 +1445,8 @@ $conn->close();
     }
 
     public function userLogout() {
-        Session::flush();
-
-            return redirect('userAll');
+            Session::flush();
+            return \Redirect::to('owner/login');
 
     }
 

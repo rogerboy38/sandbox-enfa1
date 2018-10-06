@@ -49,11 +49,16 @@
         <input type="date" class="form-control" data-date-format="mm/dd/yyyy">
       </div>
       <div class="col-xs-12  col-md-2">
-        <label for="">Tipo</label>
-        <select class="custom-select">
-          <option selected>Caja seca</option>
-          <option value="1">Caja refigerada</option>
-          <option value="2">Otro</option>
+        {!! Form::Label('types', 'Tipo:') !!}
+        <select  class="custom-select" name="Destino">
+
+        @foreach($types as $type)
+          <option value="{{$type->name}}" class="form-control">{{$type->name ." ".$type->max_size}}</option>
+
+        @endforeach
+          ])}}
+
+
         </select>
       </div>
       <div class="col-xs-12 col-md-1 text-center">
