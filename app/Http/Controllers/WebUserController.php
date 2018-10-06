@@ -686,7 +686,7 @@ class WebUserController extends Controller {
 
         $request_id = \Enfa\Requests::segment(3);
         $request = \Enfa\Requests::where('id', $request_id)->first();
-        $reqserv = RequestServices::where('request_id', $request_id)->first();
+        $reqserv = \Enfa\RequestServices::where('request_id', $request_id)->first();
         $typess = \Enfa\ProviderType::where('id', $reqserv->type)->first();
 
         $total_amount = $request->total;
@@ -1057,7 +1057,7 @@ class WebUserController extends Controller {
                 $default_timezone = Config::get('app.timezone');
                 $offset = $this->get_timezone_offset($default_timezone, $user_timezone);
 
-                $request = new Requests;
+                $request = new \Enfa\Requests;
                 $request->owner_id = $owner_id;
                 if ($d_longitude != '' && $d_latitude != '') {
                     $request->D_latitude = $d_latitude;
@@ -1539,42 +1539,30 @@ $conn->close();
      * @return Response
      */
 
-     public function userProfile(Request $request, \Enfa\Sessions $id ) {
-       //public function userProfile(Request $request, Users $owner_id) {
-        $user = array();
-        $email = '';
-        //$key = $request->session()->get('key');
-        $key = Session::get('key');
-        //$this->authorize('userVerify', auth()->user());
-        $owner_id = Session::get('user_id');
-        $user = \Enfa\Owners::All('id', 'picture', 'first_name','last_name', 'email')->where('owners.id', '=', $owner_id);
-        return View::make('web.userProfile')
-                        ->with('title', 'My Profile')
-                        ->with('user', $user[$owner_id])
-                        ->with('requests', $requests);
+       public function userProfile() {
+           $owner_id = Session::get('user_id');
+           $user = \Enfa\Owners::where('owners.id' , '=' , $owner_id)->first();
+           $type = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+           $ps = \Enfa\ProviderServices::where('provider_id', $owner_id)->get();
+           $counter = $user->rate_count;
+           $picture = $user->picture;
+           //revisar aqui el counter para la view ...
 
-                        //->with('user', $user[$owner_id]);
-      //  return ( 'owners' . $owner_id .'key= '. $key);
-    }
 
-    /**
-     * Show the profile for the given user.
-     *
-     * @param  Request  $request
-     * @param  int  $id
-     * @return Response
-     */
-     /*
-    public function userProfile(Request $request)
-    {
-        $value = $request->session()->get('key');
-        $this->authorize('modifyUser', auth()->user());
-        $owner_id = $this->id;
+    return View::make('web.userProfile')
+                    ->with('title', 'My Profile')
+                    ->with('user', $user);
 
-        //
-        return ( 'owner' . $owner_id . '  value ='. $value . 'id = ' . $id);
-    }
-    */
+
+          /* return View::make('provider.providerProfile')
+                           ->with('title', 'My Provider Profile')
+                           ->with('user', $user)
+                           ->with('type', $type)
+                           ->with('ps', $ps)
+                           ->with('counter', $counter)
+                           ->with('picture',$picture);
+          */
+       }
     public function updateUserProfile() {
 
         $owner_id = Session::get('user_id');

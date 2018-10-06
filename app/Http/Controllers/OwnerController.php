@@ -117,7 +117,7 @@ public function ownerVerify() {
             return Redirect::to($url);
             //return ($url);
         } else {
-            return Redirect::to('user/request-trip')->with ($request, $id );
+            return Redirect::to('user/request-trip');
 //          return Redirect::to('user/request-trip');
         }
     } else {

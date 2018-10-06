@@ -179,7 +179,7 @@
             var card= <?php
             try{
                 $owner_id=Session::get('user_id');
-                $payments = Payment::where('owner_id', $owner_id)->get();
+                $payments = \Enfa\Payments::where('owner_id', $owner_id)->get();
                 $json=json_encode($payments,true);
                 $jdecode=json_decode($json,true);
                 echo $jdecode[0]['last_four'];
