@@ -15,7 +15,6 @@
       @include('landing.nav')
     <!-- END NAV -->
     <!-- MAIN-->
-
       @include('provider.login2')
       <!--@css('filename')
       @js('filename')

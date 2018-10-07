@@ -628,7 +628,7 @@ class WebUserController extends Controller {
                 }
             }
 
-            $walker_detail = WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
+            $walker_detail = \Enfa\WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
 
             $eta = \Enfa\Settings::where('key', '=', 'get_destination')->first();
             $eta_value = $eta->value;
@@ -934,7 +934,7 @@ class WebUserController extends Controller {
         $request = \Enfa\Requests::where('id', $request_id)->first();
         $d_latitude = $request->D_latitude;
         $d_longitude = $request->D_longitude;
-        $walk_loc = WalkLocation::where('request_id', $request_id)->orderBy('id', 'desc')->first();
+        $walk_loc = \Enfa\WalkLocation::where('request_id', $request_id)->orderBy('id', 'desc')->first();
         $longitude = $walk_loc->longitude;
         $latitude = $walk_loc->latitude;
 
@@ -1073,16 +1073,21 @@ class WebUserController extends Controller {
                 //$request->request_start_time = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s")) + $offset);
                 $request->save();
 
-                $request_service = new RequestServices;
+                $request_service = new \Enfa\RequestServices;
                 $request_service->type = $type;
                 $request_service->request_id = $request->id;
                 $request_service->save();
+                /*
+                quitar de aqui
+                */
                 $servername = "localhost";
                 $username = "root";
                 $password = "uber123!";
                 $dbname = "uberforx";
 
+
 // Create connection
+
 $conn = new mysqli($servername, $username, $password, $dbname);
 // Check connection
 if ($conn->connect_error) {
@@ -1197,7 +1202,7 @@ $conn->close();
 
 
                 $request_data['dog'] = array();
-                if ($dog = Dog::find($owner->dog_id)) {
+                if ($dog = \Enfa\Dog::find($owner->dog_id)) {
 
                     $request_data['dog']['name'] = $dog->name;
                     $request_data['dog']['age'] = $dog->age;
@@ -1454,15 +1459,15 @@ $conn->close();
         $id = \Enfa\Requests::segment(3);
         $owner_id = Session::get('user_id');
         $request = \Enfa\Requests::find($id);
-        $request_service = RequestServices::find($id);
+        $request_service = \Enfa\RequestServices::find($id);
         if ($request->owner_id == $owner_id) {
-            $locations = WalkLocation::where('request_id', $id)
+            $locations = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id')
                     ->get();
-            $start = WalkLocation::where('request_id', $id)
+            $start = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id')
                     ->first();
-            $end = WalkLocation::where('request_id', $id)
+            $end = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id', 'desc')
                     ->first();
             $map = "https://maps-api-ssl.google.com/maps/api/staticmap?size=249x249&style=feature:landscape|visibility:off&style=feature:poi|visibility:off&style=feature:transit|visibility:off&style=feature:road.highway|element:geometry|lightness:39&style=feature:road.local|element:geometry|gamma:1.45&style=feature:road|element:labels|gamma:1.22&style=feature:administrative|visibility:off&style=feature:administrative.locality|visibility:on&style=feature:landscape.natural|visibility:on&scale=2&markers=shadow:false|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-start@2x.png|$start->latitude,$start->longitude&markers=shadow:false|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-finish@2x.png|$end->latitude,$end->longitude&path=color:0x2dbae4ff|weight:4";

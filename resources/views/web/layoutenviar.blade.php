@@ -16,6 +16,7 @@
     <!-- MAIN-->
 
       @include('info.mainEnviar')
+      @include('dashboard.marketplace')
 
     <!-- END MAIN -->
     <!-- FOOTER -->

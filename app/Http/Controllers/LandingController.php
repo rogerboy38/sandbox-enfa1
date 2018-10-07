@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use \Input;
+use Session;
 
 
 class LandingController extends Controller
@@ -70,6 +72,7 @@ class LandingController extends Controller
 					'email' => $data['email'],
 					'password' => Hash::make($data['password']),
 			]);
+
 	}
 	/**
 	 * Display a listing of the resource.
@@ -90,7 +93,12 @@ class LandingController extends Controller
 	 	//return View::make('welcome');
 	}
 
+public function marketplace()
+{
 
+  	 	return View::make('welcome');
+
+}
 	/**
 	 * Show the form for creating a new resource.
 	 *
@@ -98,6 +106,7 @@ class LandingController extends Controller
 	 */
 	public function create2()
 	{
+    /*
     return \Enfa\Favoritos::create([
         'user_id' => $data['user_id'],
         'mandado' => $data['mandado'],
@@ -105,7 +114,8 @@ class LandingController extends Controller
         'destino' => $data['destino'],
         'fecha' => $data['fecha'],
     ]);
-
+    */
+    return View::make('welcome');
 	}
 
 
@@ -198,8 +208,20 @@ class LandingController extends Controller
   }
 
 	public function quieroEnviar()
+
 	{
-        return \View::make("info.quieroEnviar");
+        $origen=Input::get('origen');
+        $destino=Input::get('destino');
+        $owner_id = Session::get('user_id');
+        $type = Input::get('type');
+        $date= Input::get('date');
+        return \View::make("info.quieroEnviar")
+        ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's')
+        ->with('origen', $origen)
+        ->with('destino', $destino)
+        ->with('owner_id', $owner_id)
+        ->with('date', $date)
+        ->with('type', $type);
   }
 
 	public function quieroTransportar()

@@ -15,9 +15,17 @@ Route::group(['middleware'=>'web'], function (){
   //  return redirect('//public/landing');
   //});
   Route::get('/landing', 'LandingController@index')->name('search');
-  Route::post('search', array('as' => 'landing', 'uses' => 'LandingController@create2'))->name('search');
+//  Route::post('/landing', array('as' => 'search', 'uses' => 'LandingController@create2'))->name('search');
+  //Route::post('/landing', array('as' => 'landing', 'uses' => 'LandingController@create2'))->name('landing');
   // entrada por auth()
   //Route::auth();
+
+  Route::resource('/test', 'QueryController')->names([
+      'search' => 'search.build'
+  ]);
+Route::resource('/landing/guestQueries', 'QueryController')->names([
+    'search' => 'search.build'
+]);
 
 
 
@@ -25,7 +33,7 @@ Route::group(['middleware'=>'web'], function (){
 
 Route::get('userLogin','LandingController@userLogin');
 Route::post('userLogin','WebUserController@userVerify');
-Route::post('userLogin','WebUserController@userVerify');
+//Route::post('userLogin','WebUserController@userVerify');
 
 
 Route::get('userRegister','LandingController@userRegister')->name('userRegister');
@@ -41,15 +49,16 @@ Route::get('termsandconditions','LandingController@termsandconditions');
 
 Route::get('privacidad','LandingController@privacidad');
 
-Route::get('/landing/create', 'LandingController@create');
-
+//Route::get('/landing/create', 'LandingController@create');
+//Route::post('/landing/create', 'LandingController@create2');
 //Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
 });
 // hasta que se libere layout de Marketplace
-Route::get('/marketplace', 'HomeController@index')->name('marketplace');
+//Route::get('landing/marketplace', 'HomeController@index')->name('marketplace');
 Route::get('/userTrips', 'HomeController@userHome')->name('userTrips');
+
 //Route::get('/providerTrips', 'HomeController@providerHome')->name('providerTrips');
 
 

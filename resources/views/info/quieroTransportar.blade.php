@@ -1,4 +1,4 @@
-@extends("web.layouttransportar")
+@extends("web.layoutTransportar")
 
 @section('content')
 {{ Form::open(array('url'=> '/quieroTransportar', 'method'=>'POST', 'class'=>"row m-0" ))}}
