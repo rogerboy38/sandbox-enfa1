@@ -147,6 +147,12 @@ return [
         Illuminate\Translation\TranslationServiceProvider::class,
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
+        Shipu\Themevel\Providers\ThemevelServiceProvider::class,
+        Illuminate\Log\LogServiceProvider::class,
+      //  Orchestra\Asset\AssetServiceProvider::class,
+        Collective\Html\HtmlServiceProvider::class,
+        Enfa\Providers\AppServiceProvider::class,
+        Laraveles\Spanish\SpanishServiceProvider::class,
 
         /*
          * Package Service Providers...
@@ -155,11 +161,15 @@ return [
         /*
          * Application Service Providers...
          */
-        Enfa\Providers\AppServiceProvider::class,
+        //Enfa\Providers\AppServiceProvider::class,
         Enfa\Providers\AuthServiceProvider::class,
         // Enfa\Providers\BroadcastServiceProvider::class,
         Enfa\Providers\EventServiceProvider::class,
         Enfa\Providers\RouteServiceProvider::class,
+        Enfa\Providers\ListsWorkAround::class,
+        Enfa\Providers\HelperServiceProvider::class,
+
+       // Enfa\Providers\ThemeServiceProvider::class,
 
     ],
 
@@ -194,6 +204,7 @@ return [
         'Gate' => Illuminate\Support\Facades\Gate::class,
         'Hash' => Illuminate\Support\Facades\Hash::class,
         'Html' => Collective\Html\HtmlFacade::class,
+        'Input' => Illuminate\Support\Facades\Input::class,
         'Lang' => Illuminate\Support\Facades\Lang::class,
         'Log' => Illuminate\Support\Facades\Log::class,
         'Mail' => Illuminate\Support\Facades\Mail::class,
@@ -209,8 +220,12 @@ return [
         'Session' => Illuminate\Support\Facades\Session::class,
         'Storage' => Illuminate\Support\Facades\Storage::class,
         'URL' => Illuminate\Support\Facades\URL::class,
+        'Users' => Enfa\Users::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
+        'Theme' => Shipu\Themevel\Facades\Theme::class,
+        'UserTrait' => Illuminate\Auth\UserTrait::class,
+        'Log' => Illuminate\Log\LogManager::class,
 
     ],
 

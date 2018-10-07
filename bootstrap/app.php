@@ -41,6 +41,7 @@ $app->singleton(
     Enfa\Exceptions\Handler::class
 );
 
+
 /*
 |--------------------------------------------------------------------------
 | Return The Application

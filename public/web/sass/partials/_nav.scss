@@ -1,0 +1,36 @@
+.menu-desktop {
+  background-color: $primary-dark;
+  box-shadow: -2px 1px 13px 1px black;
+  border-bottom: 2px solid $yellow-gold;
+  a {
+    color: #fff;
+    &:hover {
+      text-decoration: none;
+    }
+  }
+  li {
+    padding: 1em;
+    transition: background 0.3s ease-in-out;
+    &:hover {
+      background-color: $yellow-gold;
+    }
+  }
+}
+.menu-mobile {
+  padding: 15px 10px;
+  text-align: right;
+  justify-content: flex-end;
+  .menu-icon {
+    font-size: 4.5rem;
+  }
+}
+.main-header.navbar {
+  border: none;
+  margin-bottom: 0;
+  min-height: 50px;
+  border-radius: 0;
+  margin-left: 230px;
+  -webkit-transition: margin-left .3s ease-in-out;
+  -o-transition: margin-left .3s ease-in-out;
+  transition: margin-left .3s ease-in-out;
+}

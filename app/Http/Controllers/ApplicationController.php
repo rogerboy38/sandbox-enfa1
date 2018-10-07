@@ -1,4 +1,33 @@
 <?php
+namespace Enfa\Http\Controllers;
+
+use URL;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Routing\Controller as BaseController;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Model;
+use App\Product;
+use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
+use Closure;
+use Illuminate\Support\Facades\Auth;
+use App\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Input;
 
 class ApplicationController extends BaseController {
 
@@ -92,9 +121,9 @@ class ApplicationController extends BaseController {
         $email = Input::get('email');
         if ($type == 1) {
             // Walker
-            $walker_data = Walker::where('email', $email)->first();
+            $walker_data = \Enfa\Walkers::where('email', $email)->first();
             if ($walker_data) {
-                $walker = Walker::find($walker_data->id);
+                $walker = \Enfa\Walkers::find($walker_data->id);
                 $new_password = time();
                 $new_password .= rand();
                 $new_password = sha1($new_password);

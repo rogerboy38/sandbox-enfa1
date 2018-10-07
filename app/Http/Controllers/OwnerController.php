@@ -1,24 +1,55 @@
 <?php
 namespace Enfa\Http\Controllers;
-use Enfa\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Input;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Log;
 
+use App\Http\Requests\ProductCreateRequest;
+
+use PayPal\Rest\ApiContext;
+use PayPal\Auth\OAuthTokenCredential;
+use PayPal\Api\Amount;
+use PayPal\Api\Details;
+use PayPal\Api\Item;
+use PayPal\Api\ItemList;
+use PayPal\Api\Payer;
+use PayPal\Api\Payment as PaymentPaypal;
+use PayPal\Api\RedirectUrls;
+use PayPal\Api\ExecutePayment;
+use PayPal\Api\PaymentExecution;
+use PayPal\Api\Transaction;
+use Illuminate\Support\Facades\Config;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Model;
 use App\Product;
 use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
 use Closure;
-use Illuminate\Support\Facades\Auth;
-
-
+//use Illuminate\Support\Facades\Auth;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\RegistersUsers;
+//use Illuminate\Http\Request;
+use Enfa\User;
+//use Illuminate\Support\Facades\Log;
+//use Theme as Theme;
+use Enfa\models\Owners as owners;
+//use \Redirect;
+use Input;
+use Illuminate\Support\Facades\Validator;
+use URL;
+use Route;
+use Session;
+use Redirect;
+use Auth;
+use \Lang;
+use Illuminate\Support\Facades\Log;
+use Request;
+use \Response;
 class OwnerController extends BaseController
 {
   /*
@@ -37,13 +68,13 @@ class OwnerController extends BaseController
      *
      * @var string
      */
-  protected $redirectTo = '/home';
+  protected $redirectTo = '/landing';
   /**
      * Create a new controller instance.
      *
      * @return void
      */
-     public function __construct() {
+  /*   public function __construct() {
 
          $this->middleware(function () {
              if (!Auth::check()) {
@@ -51,14 +82,48 @@ class OwnerController extends BaseController
                  $routeName = Route::currentRouteName();
                  Log::info('current route =' . print_r(Route::currentRouteName(), true));
 
-                 if ($routeName != "UserLogin" && $routeName != 'user') {
+                 if ($routeName != "OwnerLogin" && $routeName != 'user') {
                      Session::put('pre_user_login_url', $url);
                  }
                  $response = $this;
-                 return $response;
+                 return('aqui en middleware');
+                 //return $response;
+
              }
          }, array('except' => array('login', 'verify', 'add', 'walker_xml')));
      }
+*/
+/**
+ * Create a new controller instance.
+ *
+ * @return void
+ */
+public function __construct()
+{
+    //parent::__construct();
+    $this->middleware('guest')->except('logout');
+}
+public function ownerVerify() {
+    $email = Input::get('email');
+    $password = Input::get('password');
+    $owners = \Enfa\Owners::where('email', '=', $email)->first();
+    if ($owners && Hash::check($password, $owners->password)) {
+        Session::put('user_id', $owners->id);
+        Session::put('user_name', $owners->first_name . " " . $owners->last_name);
+        Session::put('user_pic', $owners->picture);
+        if (Session::has('pre_login_url')) {
+            $url = Session::get('pre_login_url');
+            Session::forget('pre_login_url');
+            return Redirect::to($url);
+            //return ($url);
+        } else {
+            return Redirect::to('user/request-trip');
+//          return Redirect::to('user/request-trip');
+        }
+    } else {
+        return Redirect::to('owner/login')->with('error', 'Invalid email and password');
+    }
+}
 
     /**
     * Get the needed authorization credentials from the request.
@@ -85,10 +150,10 @@ class OwnerController extends BaseController
 
     public function getOwnerData($owner_id, $token, $is_admin) {
 
-        if ($owner_data = Owner::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
+        if ($owner_data = \Enfa\Owner::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
             return $owner_data;
         } elseif ($is_admin) {
-            $owner_data = Owner::where('id', '=', $owner_id)->first();
+            $owner_data = \Enfa\Owner::where('id', '=', $owner_id)->first();
             if (!$owner_data) {
                 return false;
             }
@@ -191,7 +256,7 @@ class OwnerController extends BaseController
       $ledger->amount_earned = $ledger->amount_earned + $referral_bonus;
       $ledger->save();
 
-      $owner = Owner::find($owner_id);
+      $owner = \Enfa\Owner::find($owner_id);
       $owner->referred_by = $ledger->owner_id;
       $owner->save();
 
@@ -292,7 +357,7 @@ class OwnerController extends BaseController
                             $referred_by = $ledger->owner_id;
                             if ($referred_by != $owner_id) {
                                 if ($owner_data->is_referee) {
-                                    $owner = Owner::find($owner_id);
+                                    $owner = \Enfa\Owner::find($owner_id);
                                     $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => false,
@@ -336,11 +401,11 @@ class OwnerController extends BaseController
                                     $ledger1->amount_earned = $ledger1->amount_earned + $referral;
                                     $ledger1->save();
 
-                                    $owner = Owner::find($owner_id);
+                                    $owner = \Enfa\Owner::find($owner_id);
                                     $owner->referred_by = $ledger->owner_id;
                                     $owner->is_referee = 1;
                                     $owner->save();
-                                    $owner = Owner::find($owner_id);
+                                    $owner = \Enfa\Owner::find($owner_id);
                                     $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => true,
@@ -368,7 +433,7 @@ class OwnerController extends BaseController
                                     $response_code = 200;
                                 }
                             } else {
-                                $owner = Owner::find($owner_id);
+                                $owner = \Enfa\Owner::find($owner_id);
                                 $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                 $response_array = array(
                                     'success' => false,
@@ -397,7 +462,7 @@ class OwnerController extends BaseController
                                 $response_code = 200;
                             }
                         } else {
-                            $owner = Owner::find($owner_id);
+                            $owner = \Enfa\Owner::find($owner_id);
                             $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                             $response_array = array(
                                 'success' => false,
@@ -426,10 +491,10 @@ class OwnerController extends BaseController
                             $response_code = 200;
                         }
                     } else {
-                        $owner = Owner::find($owner_id);
+                        $owner = \Enfa\Owner::find($owner_id);
                         $owner->is_referee = 1;
                         $owner->save();
-                        $owner = Owner::find($owner_id);
+                        $owner = \Enfa\Owner::find($owner_id);
                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                         $response_array = array(
                             'success' => true,
@@ -500,7 +565,7 @@ class OwnerController extends BaseController
             if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
-                    $request = Requests::where('owner_id', '=', $owner_id)->where('status', '=', 1)->orderBy('created_at', 'desc')->first();
+                    $request = \Enfa\Requests::where('owner_id', '=', $owner_id)->where('status', '=', 1)->orderBy('created_at', 'desc')->first();
                     if ($request) {
                         if (isset($request->id)) {
                             if ($request->promo_id) {
@@ -538,16 +603,16 @@ class OwnerController extends BaseController
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = Owner::find($owner_id);
+                                                        $owner = \Enfa\Owner::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
-                                                        $request = Requests::find($request->id);
+                                                        $request = \Enfa\Requests::find($request->id);
                                                         $request->promo_id = $promos->id;
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = Owner::find($owner_id);
+                                                        $owner = \Enfa\Owner::find($owner_id);
                                                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
@@ -612,16 +677,16 @@ class OwnerController extends BaseController
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = Owner::find($owner_id);
+                                                        $owner = \Enfa\Owner::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
-                                                        $request = Requests::find($request->id);
+                                                        $request = \Enfa\Requests::find($request->id);
                                                         $request->promo_id = $promos->id;
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = Owner::find($owner_id);
+                                                        $owner = \Enfa\Owner::find($owner_id);
                                                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
@@ -1022,7 +1087,7 @@ class OwnerController extends BaseController
         return $response;
     }
 
-    public function login() {
+    /*public function login() {
         $login_by = Input::get('login_by');
         $device_token = Input::get('device_token');
         $device_type = Input::get('device_type');
@@ -1052,7 +1117,7 @@ class OwnerController extends BaseController
                 $response_code = 200;
                 Log::error('Validation error during manual login for owner = ' . print_r($error_messages, true));
             } else {
-                if ($owner = Owner::where('email', '=', $email)->first()) {
+                if ($owner = \Enfa\Owner::where('email', '=', $email)->first()) {
                     if (Hash::check($password, $owner->password)) {
                         if ($login_by !== "manual") {
                             $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
@@ -1067,8 +1132,9 @@ class OwnerController extends BaseController
                             $owner->token = generate_token();
                             $owner->token_expiry = generate_expiry();
                             $owner->save();
+*/
                             /* SEND REFERRAL & PROMO INFO */
-                            $settings = Settings::where('key', 'referral_code_activation')->first();
+/*                            $settings = Settings::where('key', 'referral_code_activation')->first();
                             $referral_code_activation = $settings->value;
                             if ($referral_code_activation) {
                                 $referral_code_activation_txt = "referral on";
@@ -1083,8 +1149,9 @@ class OwnerController extends BaseController
                             } else {
                                 $promotional_code_activation_txt = "promo off";
                             }
+*/
                             /* SEND REFERRAL & PROMO INFO */
-                            $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
+/*                            $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
 
                             $response_array = array(
                                 'success' => true,
@@ -1160,7 +1227,7 @@ class OwnerController extends BaseController
                 $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                 $response_code = 200;
             } else {
-                if ($owner = Owner::where('social_unique_id', '=', $social_unique_id)->first()) {
+                if ($owner = \Enfa\Owner::where('social_unique_id', '=', $social_unique_id)->first()) {
                     if (!in_array($login_by, array('facebook', 'google'))) {
                         $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
                         $response_code = 200;
@@ -1223,15 +1290,22 @@ class OwnerController extends BaseController
         $response = Response::json($response_array, $response_code);
         return $response;
     }
+*/
+    public function ShowLoginOwner()
+    {
+
+      return View::make('provider.ownerLogin');
+    }
 
     public function details() {
-        if (Request::isMethod('post')) {
+
+      if (Request::isMethod('post')) {
             $address = Input::get('address');
             $state = Input::get('state');
             $zipcode = Input::get('zipcode');
             $token = Input::get('token');
             $owner_id = Input::get('id');
-
+            //return ('en post' .$owner_id);
             $validator = Validator::make(
                             array(
                         'address' => $address,
@@ -1259,7 +1333,7 @@ class OwnerController extends BaseController
                     if (is_token_active($owner_data->token_expiry) || $is_admin) {
                         // Do necessary operations
 
-                        $owner = Owner::find($owner_data->id);
+                        $owner = \Enfa\Owner::find($owner_data->id);
                         $owner->address = $address;
                         $owner->state = $state;
                         $owner->zipcode = $zipcode;
@@ -1282,54 +1356,107 @@ class OwnerController extends BaseController
                     $response_code = 200;
                 }
             }
-        } else {
-            //handles get request
-            $token = Input::get('token');
-            $owner_id = Input::get('id');
-            $validator = Validator::make(
-                            array(
-                        'token' => $token,
-                        'owner_id' => $owner_id,
-                            ), array(
-                        'token' => 'required',
-                        'owner_id' => 'required|integer'
-                            )
-            );
+        }  elseif (!Session::has('id')) {
+              $id = Session::get('id');
+              $token = Session::get('token');
+              $owner_id = Session::get('user_id');
+              //return ($owner_id);
+              return ('en Session' .$owner_id . 'token = ' . $token . 'id=' . $id);
+              //$token = Input::get('token');
+              //$owner_id = Input::get('id');
+              $validator = Validator::make(
+                              array(
+                          'token' => $token,
+                          'owner_id' => $owner_id,
+                              ), array(
+                          'token' => 'required',
+                          'owner_id' => 'required|integer'
+                              )
+              );
 
-            if ($validator->fails()) {
-                $error_messages = $validator->messages()->all();
-                $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
-                $response_code = 200;
-            } else {
+              if ($validator->fails()) {
+                  $error_messages = $validator->messages()->all();
+                  $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
+                  $response_code = 200;
+              } else {
 
-                $is_admin = $this->isAdmin($token);
-                if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
-                    // check for token validity
-                    if (is_token_active($owner_data->token_expiry) || $is_admin) {
+                  $is_admin = $this->isAdmin($token);
+                  if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
+                      // check for token validity
+                      if (is_token_active($owner_data->token_expiry) || $is_admin) {
 
-                        $response_array = array(
-                            'success' => true,
-                            'address' => $owner_data->address,
-                            'state' => $owner_data->state,
-                            'zipcode' => $owner_data->zipcode,
-                        );
-                        $response_code = 200;
-                    } else {
-                        $response_array = array('success' => false, 'error' => 'Token Expired', 'error_code' => 405);
-                        $response_code = 200;
-                    }
-                } else {
-                    if ($is_admin) {
-                        /* $var = Keywords::where('id', 2)->first();
-                          $response_array = array('success' => false, 'error' => '' . $var->keyword . ' ID not Found', 'error_code' => 410); */
-                        $response_array = array('success' => false, 'error' => '' . Config::get('app.generic_keywords.User') . ' ID not Found', 'error_code' => 410);
-                    } else {
-                        $response_array = array('success' => false, 'error' => 'Not a valid token', 'error_code' => 406);
-                    }
+                          $response_array = array(
+                              'success' => true,
+                              'address' => $owner_data->address,
+                              'state' => $owner_data->state,
+                              'zipcode' => $owner_data->zipcode,
+                          );
+                          $response_code = 200;
+                      } else {
+                          $response_array = array('success' => false, 'error' => 'Token Expired', 'error_code' => 405);
+                          $response_code = 200;
+                      }
+                  } else {
+                      if ($is_admin) {
+                          /* $var = Keywords::where('id', 2)->first();
+                            $response_array = array('success' => false, 'error' => '' . $var->keyword . ' ID not Found', 'error_code' => 410); */
+                          $response_array = array('success' => false, 'error' => '' . Config::get('app.generic_keywords.User') . ' ID not Found', 'error_code' => 410);
+                      } else {
+                          $response_array = array('success' => false, 'error' => 'Not a valid token', 'error_code' => 406);
+                      }
+                      $response_code = 200;
+                  }
+              }
+            } elseif (Request::isMethod('get'))  {
+                //handles get request
+
+                $token = Input::get('token');
+                $owner_id = Input::get('id');
+                //return ('en get' .$owner_id);
+                $validator = Validator::make(
+                                array(
+                            'token' => $token,
+                            'owner_id' => $owner_id,
+                                ), array(
+                            'token' => 'required',
+                            'owner_id' => 'required|integer'
+                                )
+                );
+
+                if ($validator->fails()) {
+                    $error_messages = $validator->messages()->all();
+                    $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                     $response_code = 200;
+                } else {
+
+                    $is_admin = $this->isAdmin($token);
+                    if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
+                        // check for token validity
+                        if (is_token_active($owner_data->token_expiry) || $is_admin) {
+
+                            $response_array = array(
+                                'success' => true,
+                                'address' => $owner_data->address,
+                                'state' => $owner_data->state,
+                                'zipcode' => $owner_data->zipcode,
+                            );
+                            $response_code = 200;
+                        } else {
+                            $response_array = array('success' => false, 'error' => 'Token Expired', 'error_code' => 405);
+                            $response_code = 200;
+                        }
+                    } else {
+                        if ($is_admin) {
+                            /* $var = Keywords::where('id', 2)->first();
+                              $response_array = array('success' => false, 'error' => '' . $var->keyword . ' ID not Found', 'error_code' => 410); */
+                            $response_array = array('success' => false, 'error' => '' . Config::get('app.generic_keywords.User') . ' ID not Found', 'error_code' => 410);
+                        } else {
+                            $response_array = array('success' => false, 'error' => 'Not a valid token', 'error_code' => 406);
+                        }
+                        $response_code = 200;
+                    }
                 }
             }
-        }
         $response = Response::json($response_array, $response_code);
         return $response;
     }
@@ -1397,7 +1524,7 @@ class OwnerController extends BaseController
                                 }
                                 $payment->save();
 
-                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1421,7 +1548,7 @@ class OwnerController extends BaseController
                                 );
                                 $response_code = 200;
                             } else {
-                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1474,7 +1601,7 @@ class OwnerController extends BaseController
                                 }
                                 $payment->save();
 
-                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1499,7 +1626,7 @@ class OwnerController extends BaseController
                                 );
                                 $response_code = 200;
                             } else {
-                                $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($payment_data as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1578,16 +1705,16 @@ class OwnerController extends BaseController
             if ($owner_data = $this->getOwnerData($owner_id, $token, $is_admin)) {
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
-                    if ($payment = Payment::find($card_id)) {
+                    if ($payment = \Enfa\Payment::find($card_id)) {
                         if ($payment->owner_id == $owner_id) {
 
-                            $pdn = Payment::where('id', $card_id)->first();
+                            $pdn = \Enfa\Payment::where('id', $card_id)->first();
                             $check = trim($pdn->is_default);
                             Payment::find($card_id)->delete();
                             if ($check == 1) {
                                 $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                                 if ($card_count) {
-                                    $paymnt = Payment::where('owner_id', $owner_id)->first();
+                                    $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->first();
                                     $paymnt->is_default = 1;
                                     $paymnt->save();
                                 }
@@ -1596,7 +1723,7 @@ class OwnerController extends BaseController
                             $payments = array();
                             $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                             if ($card_count) {
-                                $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                                $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                                 foreach ($paymnt as $data1) {
                                     $default = $data1->is_default;
                                     if ($default == 1) {
@@ -1880,7 +2007,7 @@ class OwnerController extends BaseController
                     $payments = array();
                     $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                     if ($card_count) {
-                        $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                        $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                         foreach ($paymnt as $data1) {
                             $default = $data1->is_default;
                             if ($default == 1) {
@@ -1962,7 +2089,7 @@ class OwnerController extends BaseController
                     // Do necessary operations
                     Payment::where('owner_id', $owner_id)->update(array('is_default' => 0));
                     Payment::where('owner_id', $owner_id)->where('id', $default_card_id)->update(array('is_default' => 1));
-                    $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                     foreach ($payment_data as $data1) {
                         $default = $data1->is_default;
                         if ($default == 1) {
@@ -1979,7 +2106,7 @@ class OwnerController extends BaseController
                         $data['is_default'] = $default;
                         array_push($payments, $data);
                     }
-                    $owner = Owner::find($owner_id);
+                    $owner = \Enfa\Owner::find($owner_id);
 
                     $response_array = array(
                         'success' => true,
@@ -2137,7 +2264,7 @@ class OwnerController extends BaseController
                         }
                         $request['map_url'] = $map;
 
-                        $walker = Walker::where('id', $data->walker_id)->first();
+                        $walker = \Enfa\Walkers::where('id', $data->walker_id)->first();
 
                         if ($walker != NULL) {
                             $user_timezone = $walker->timezone;
@@ -2391,7 +2518,7 @@ class OwnerController extends BaseController
                         if ($old_password != "" || $old_password != NULL) {
                             if (Hash::check($old_password, $owner_data->password)) {
                                 // Do necessary operations
-                                $owner = Owner::find($owner_id);
+                                $owner = \Enfa\Owner::find($owner_id);
                                 if ($first_name) {
                                     $owner->first_name = $first_name;
                                 }
@@ -2529,7 +2656,7 @@ class OwnerController extends BaseController
                         }
                     } else {
                         // Do necessary operations
-                        $owner = Owner::find($owner_id);
+                        $owner = \Enfa\Owner::find($owner_id);
                         if ($first_name) {
                             $owner->first_name = $first_name;
                         }
@@ -2706,7 +2833,7 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     if ($cash_or_card != 1) {
-                        $card_count = Payment::where('owner_id', '=', $owner_id)->count();
+                        $card_count = \Enfa\Payment::where('owner_id', '=', $owner_id)->count();
                         if ($card_count <= 0) {
                             $response_array = array('success' => false, 'error' => "Please add card first for payment.", 'error_code' => 417);
                             $response_code = 200;
@@ -2715,8 +2842,8 @@ class OwnerController extends BaseController
                         }
                     }
                     // Do necessary operations
-                    $owner = Owner::find($owner_id);
-                    $payment_data = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                    $owner = \Enfa\Owner::find($owner_id);
+                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                     foreach ($payment_data as $data1) {
                         $default = $data1->is_default;
                         if ($default == 1) {
@@ -2735,11 +2862,11 @@ class OwnerController extends BaseController
                         $data['is_default'] = $default;
                         array_push($payments, $data);
                     }
-                    if ($request = Requests::find($request_id)) {
+                    if ($request = \Enfa\Requests::find($request_id)) {
                         $request->payment_mode = $cash_or_card;
                         $request->save();
 
-                        $walker = Walker::where('id', $request->confirmed_walker)->first();
+                        $walker = \Enfa\Walkers::where('id', $request->confirmed_walker)->first();
                         if ($walker) {
                             $msg_array = array();
                             $msg_array['unique_id'] = 3;
@@ -2834,7 +2961,7 @@ class OwnerController extends BaseController
                     $payments = array();
                     $card_count = DB::table('payment')->where('owner_id', '=', $owner_id)->count();
                     if ($card_count) {
-                        $paymnt = Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
+                        $paymnt = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                         foreach ($paymnt as $data1) {
                             $default = $data1->is_default;
                             if ($default == 1) {
@@ -2910,9 +3037,9 @@ class OwnerController extends BaseController
                         $response = Response::json($response_array, $response_code);
                         return $response;
                     }
-                    $payment_data = Payment::where('owner_id', $owner_id)->where('is_default', 1)->first();
+                    $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->where('is_default', 1)->first();
                     if (!$payment_data)
-                        $payment_data = Payment::where('owner_id', $request->owner_id)->first();
+                        $payment_data = \Enfa\Payment::where('owner_id', $request->owner_id)->first();
 
                     if ($payment_data) {
                         $customer_id = $payment_data->customer_id;
@@ -2928,7 +3055,7 @@ class OwnerController extends BaseController
                                 );
                             } catch (Stripe_InvalidRequestError $e) {
                                 // Invalid parameters were supplied to Stripe's API
-                                $ownr = Owner::find($owner_id);
+                                $ownr = \Enfa\Owner::find($owner_id);
                                 $ownr->debt = $total;
                                 $ownr->save();
                                 $response_array = array('error' => $e->getMessage());
@@ -3008,7 +3135,7 @@ class OwnerController extends BaseController
                 // check for token validity
                 if (is_token_active($owner_data->token_expiry) || $is_admin) {
                     Log::info('paypal_id = ' . print_r($paypal_id, true));
-                    $req = Requests::find($request_id);
+                    $req = \Enfa\Requests::find($request_id);
                     Log::info('req = ' . print_r($req, true));
                     $req->is_paid = 1;
                     $req->payment_id = $paypal_id;
@@ -3176,10 +3303,10 @@ class OwnerController extends BaseController
 
                     foreach ($phones as $key) {
 
-                        $owner = Owner::where('id', $owner_id)->first();
+                        $owner = \Enfa\Owner::where('id', $owner_id)->first();
                         $secret = str_random(6);
 
-                        $request = Requests::where('id', $request_id)->first();
+                        $request = \Enfa\Requests::where('id', $request_id)->first();
                         $request->security_key = $secret;
                         $request->save();
                         $msg = $owner->first_name . ' ' . $owner->last_name . ' ETA : ' . $eta;
@@ -3235,7 +3362,7 @@ class OwnerController extends BaseController
                     // Payment options allowed
                     $payment_options = array();
 
-                    $payments = Payment::where('owner_id', $owner_id)->count();
+                    $payments = \Enfa\Payment::where('owner_id', $owner_id)->count();
 
                     if ($payments) {
                         $payment_options['stored_cards'] = 1;

@@ -1,5 +1,6 @@
 <?php
 namespace Enfa\Http\Controllers;
+use App\Http\Requests\ProductCreateRequest;
 
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;
@@ -14,17 +15,38 @@ use PayPal\Api\ExecutePayment;
 use PayPal\Api\PaymentExecution;
 use PayPal\Api\Transaction;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Session;
+//use Illuminate\Support\Facades\Session;
+use Session;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 use App\Product;
 use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
 use Closure;
 use Illuminate\Support\Facades\Auth;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use App\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
+use \Input;
 
 
+//use Theme as Theme;
 
-class WebUserController extends BaseController {
+use Enfa\models\owners as owners;
+
+
+class WebUserController extends Controller {
 
     /**
      * Display a listing of the resource.
@@ -50,20 +72,29 @@ class WebUserController extends BaseController {
     }
 
     public function __construct() {
+      if(\Auth::check()){
+          $post = new Post();
+
+          $post->userpost = $request['userpost'];
+          $request->user()->posts()->save($post);
+      } else {
+          return "not logged in - do something";
+      }
         if (Config::get('app.production')) {
             echo "Something cool is going to be here soon.";
             die();
         }
 
         $this->middleware(function() {
-            if (!Session::has('user_id')) {
+            if (Session::has('user_id')) {
                 Session::put('pre_login_url', URL::current());
                 return Redirect::to('/usuarios/entrar');
             } else {
                 $user_id = Session::get('user_id');
-                $owner = Owner::where('id', $user_id)->first();
+                $owner = \Enfa\Owner::where('id', $user_id)->first();
                 Session::put('user_name', $owner->first_name . " " . $owner->last_name);
                 Session::put('user_pic', $owner->picture);
+
             }
         }, array('except' => array(
                 'userLogin',
@@ -78,9 +109,9 @@ class WebUserController extends BaseController {
         $date = date("Y-m-d H:i:s");
         $time_limit = date("Y-m-d H:i:s", strtotime($date) - (3 * 60 * 60));
         $owner_id = Session::get('user_id');
-      //  $owner = Owner::where('id', $user_id)->first();
+      //  $owner = \Enfa\Owners::where('id', $user_id)->first();
        //$owner (last_name) = 'guest';
-        $current_request = Request::get('owner_id', $owner_id)
+        $current_request = \Enfa\Requests::get('owner_id', $owner_id)
                 ->where('is_cancelled', 0)
                 ->where('created_at', '>', $time_limit)
                 ->orderBy('created_at', 'desc')
@@ -94,7 +125,7 @@ class WebUserController extends BaseController {
         $this->status = 0;
         if ($current_request) {
             if ($current_request->confirmed_walker) {
-                $walker = Walker::find($current_request->confirmed_walker);
+                $walker = \Enfa\Walkers::find($current_request->confirmed_walker);
             }
 
             if ($current_request->is_completed) {
@@ -124,7 +155,7 @@ class WebUserController extends BaseController {
     public function saveUserPayment() {
         $payment_token = Input::get('stripeToken');
         $owner_id = Session::get('user_id');
-        $owner_data = Owner::find($owner_id);
+        $owner_data = \Enfa\Owners::find($owner_id);
         try {
             if (Config::get('app.default_payment') == 'stripe') {
                 Stripe::setApiKey(Config::get('app.stripe_secret_key'));
@@ -199,7 +230,7 @@ class WebUserController extends BaseController {
         $request_id = Input::get('request_id');
         $owner_id = Session::get('user_id');
         $status = Session::get('status');
-        $request = Requests::where('id', $request_id)->where('owner_id', $owner_id)->first();
+        $request = \Enfa\Requests::where('id', $request_id)->where('owner_id', $owner_id)->first();
         $rating = 0;
         if (Input::has('rating')) {
             $rating = Input::get('rating');
@@ -214,7 +245,7 @@ class WebUserController extends BaseController {
             $review_walker->save();
 
             if ($rating) {
-                if ($walker = Walker::find($request->confirmed_walker)) {
+                if ($walker = \Enfa\Walkers::find($request->confirmed_walker)) {
                     $old_rate = $walker->rate;
                     $old_rate_count = $walker->rate_count;
                     $new_rate_counter = ($walker->rate_count + 1);
@@ -250,14 +281,14 @@ class WebUserController extends BaseController {
 
 
     public function userTripCancel() {
-        $request_id = Request::segment(4);
+        $request_id = \Enfa\Requests::segment(4);
         $owner_id = Session::get('user_id');
-        $request = Requests::find($request_id);
+        $request = \Enfa\Requests::find($request_id);
         if ($request->owner_id == $owner_id) {
-            Requests::where('id', $request_id)->update(array('is_cancelled' => 1));
+            \Enfa\Requests::where('id', $request_id)->update(array('is_cancelled' => 1));
             RequestMeta::where('request_id', $request_id)->update(array('is_cancelled' => 1));
             if ($request->confirmed_walker) {
-                $walker = Walker::find($request->confirmed_walker);
+                $walker = \Enfa\Walkers::find($request->confirmed_walker);
                 $walker->is_available = 1;
                 $walker->save();
             }
@@ -268,7 +299,7 @@ class WebUserController extends BaseController {
                 $msg_array['request_id'] = $request_id;
                 $msg_array['unique_id'] = 2;
 
-                $owner = Owner::find($owner_id);
+                $owner = \Enfa\Owners::find($owner_id);
                 $request_data = array();
                 $request_data['owner'] = array();
                 $request_data['owner']['name'] = $owner->first_name . " " . $owner->last_name;
@@ -305,9 +336,9 @@ class WebUserController extends BaseController {
     }
 
     public function userTripStatus() {
-        $id = Request::segment(4);
+        $id = \Enfa\Requests::segment(4);
         $owner_id = Session::get('user_id');
-        $request = Requests::where('id', $id)->first();
+        $request = \Enfa\Requests::where('id', $id)->first();
         if ($request != NULL) {
             $status = 0;
 
@@ -332,13 +363,13 @@ class WebUserController extends BaseController {
         $time_limit = date("Y-m-d H:i:s", strtotime($date) - (3 * 60 * 60));
         $owner_id = Session::get('user_id');
 
-        $get_value = Settings::where('key', 'provider_selection')->first();
+        $get_value = \Enfa\Settings::where('key', 'provider_selection')->first();
         $selection = $get_value->value;
 
-        $get_dest = Settings::where('key', 'get_destination')->first();
+        $get_dest = \Enfa\Settings::where('key', 'get_destination')->first();
         $destination = $get_dest->value;
 
-        $current_request = Requests::where('owner_id', $owner_id)
+        $current_request = \Enfa\Requests::where('owner_id', $owner_id)
                 ->where('is_cancelled', 0)
                 ->where('created_at', '>', $time_limit)
                 ->orderBy('created_at', 'desc')
@@ -354,21 +385,21 @@ class WebUserController extends BaseController {
             // array to store all allowed payments
             $payment_options = array();
 
-            $payments = Payment::where('owner_id', Session::get('user_id'))->count();
+            $payments =  \Enfa\Payments::where('owner_id', Session::get('user_id'))->count();
 
             if ($payments) {
                 $payment_options['stored_cards'] = 1;
             } else {
                 $payment_options['stored_cards'] = 0;
             }
-            $codsett = Settings::where('key', 'cod')->first();
+            $codsett = \Enfa\Settings::where('key', 'cod')->first();
             if ($codsett->value == 1) {
                 $payment_options['cod'] = 1;
             } else {
                 $payment_options['cod'] = 0;
             }
 
-            $paypalsett = Settings::where('key', 'paypal')->first();
+            $paypalsett = \Enfa\Settings::where('key', 'paypal')->first();
             if ($paypalsett->value == 1) {
                 $payment_options['paypal'] = 1;
             } else {
@@ -380,7 +411,18 @@ class WebUserController extends BaseController {
             /* $var = Keywords::where('id', 4)->first(); */
 
             // seccion de codigo donde recuperamos los favoritos aguas aqui mejor connect en config
-            $option="<option value='0'>Selecciona un favorito</option>";
+            /*
+          // algo asi en lugar de conectar a BD desde aqui
+              return \Enfa\Favoritos::create([
+                  'user_id' => $data['user_id'],
+                  'mandado' => $data['mandado'],
+                  'origen' => $data['origen'],
+                  'destino' => $data['destino'],
+                  'fecha' => $data['fecha'],
+              ]);
+              */
+             $option="<option value='0'>Selecciona un favorito</option>";
+            /*
             $servername = "localhost";
             $username = "psmhosti_enfa";
             $password = "uber123!";
@@ -415,9 +457,9 @@ class WebUserController extends BaseController {
             }
             $conn->close();
 
+           */
 
-
-            $types = ProviderType::where('is_visible', '=', 1)->get();
+            $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
             return View::make('web.userRequestTrip2')
                             /* ->with('title', 'Request ' . $var->keyword . '') */
                             ->with('title', 'Request ' . Config::get('app.generic_keywords.Trip') . '')
@@ -428,8 +470,8 @@ class WebUserController extends BaseController {
                             ->with('page', 'request-trip')
                             ->with('favoritos',$option);
         } else {
-            $owner = Owner::find($owner_id);
-            $type = ProviderType::find($current_request->type);
+            $owner = \Enfa\Owners::find($owner_id);
+            $type = \Enfa\ProviderType::find($current_request->type);
             $status = 0;
             $payment_mode = $current_request->payment_mode;
             if ($current_request->is_walker_rated) {
@@ -450,9 +492,9 @@ class WebUserController extends BaseController {
                 }
             }
 
-            $walker_detail = WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
+            $walker_detail = \Enfa\WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
 
-            $eta = Settings::where('key', '=', 'get_destination')->first();
+            $eta = \Enfa\Settings::where('key', '=', 'get_destination')->first();
             $eta_value = $eta->value;
 
             if ($walker_detail) {
@@ -464,7 +506,7 @@ class WebUserController extends BaseController {
             /* $var = Keywords::where('id', 4)->first(); */
 
             if ($current_request->confirmed_walker) {
-                $walker = Walker::find($current_request->confirmed_walker);
+                $walker = \Enfa\Walkers::find($current_request->confirmed_walker);
 
                 /* $rating = DB::table('review_walker')->where('walker_id', '=', $current_request->confirmed_walker)->avg('rating') ? : 0; */
                 $rating = $walker->rate;
@@ -473,10 +515,10 @@ class WebUserController extends BaseController {
                                   ->with('page', '' . $var->keyword . '-status') */
                                 ->with('title', '' . Config::get('app.generic_keywords.Trip') . ' Status')
                                 ->with('page', '' . Config::get('app.generic_keywords.Trip') . '-status')
-                                ->with('request', $current_request)
-                                ->with('user', $owner)
-                                ->with('walker', $walker)
-                                ->with('type', $type)
+                                ->with('requests', $current_request)
+                                ->with('users', $owner)
+                                ->with('walkers', $walker)
+                                ->with('types', $type)
                                 ->with('walker_detail', $walker_detail)
                                 ->with('destination', $destination)
                                 ->with('status', $status)
@@ -507,13 +549,13 @@ class WebUserController extends BaseController {
         $time_limit = date("Y-m-d H:i:s", strtotime($date) - (3 * 60 * 60));
         $owner_id = Session::get('user_id');
 
-        $get_value = Settings::where('key', 'provider_selection')->first();
+        $get_value = \Enfa\Settings::where('key', 'provider_selection')->first();
         $selection = $get_value->value;
 
-        $get_dest = Settings::where('key', 'get_destination')->first();
+        $get_dest = \Enfa\Settings::where('key', 'get_destination')->first();
         $destination = $get_dest->value;
 
-        $current_request = Requests::where('owner_id', $owner_id)
+        $current_request = \Enfa\Requests::where('owner_id', $owner_id)
                 ->where('is_cancelled', 0)
                 ->where('created_at', '>', $time_limit)
                 ->orderBy('created_at', 'desc')
@@ -529,21 +571,21 @@ class WebUserController extends BaseController {
             // array to store all allowed payments
             $payment_options = array();
 
-            $payments = Payment::where('owner_id', Session::get('user_id'))->count();
+            $payments =  \Enfa\Payments::where('owner_id', Session::get('user_id'))->count();
 
             if ($payments) {
                 $payment_options['stored_cards'] = 1;
             } else {
                 $payment_options['stored_cards'] = 0;
             }
-            $codsett = Settings::where('key', 'cod')->first();
+            $codsett = \Enfa\Settings::where('key', 'cod')->first();
             if ($codsett->value == 1) {
                 $payment_options['cod'] = 1;
             } else {
                 $payment_options['cod'] = 0;
             }
 
-            $paypalsett = Settings::where('key', 'paypal')->first();
+            $paypalsett = \Enfa\Settings::where('key', 'paypal')->first();
             if ($paypalsett->value == 1) {
                 $payment_options['paypal'] = 1;
             } else {
@@ -554,7 +596,7 @@ class WebUserController extends BaseController {
 
             /* $var = Keywords::where('id', 4)->first(); */
 
-            $types = ProviderType::where('is_visible', '=', 1)->get();
+            $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
             return View::make('web.userRequestTrip')
                             /* ->with('title', 'Request ' . $var->keyword . '') */
                             ->with('title', 'Request ' . Config::get('app.generic_keywords.Trip') . '')
@@ -564,8 +606,8 @@ class WebUserController extends BaseController {
                             ->with('payment_option', $payment_options)
                             ->with('page', 'request-trip');
         } else {
-            $owner = Owner::find($owner_id);
-            $type = ProviderType::find($current_request->type);
+            $owner = \Enfa\Owners::find($owner_id);
+            $type = \Enfa\ProviderType::find($current_request->type);
             $status = 0;
             $payment_mode = $current_request->payment_mode;
             if ($current_request->is_walker_rated) {
@@ -586,9 +628,9 @@ class WebUserController extends BaseController {
                 }
             }
 
-            $walker_detail = WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
+            $walker_detail = \Enfa\WalkLocation::where('request_id', $current_request->id)->orderBy('created_at', 'desc')->first();
 
-            $eta = Settings::where('key', '=', 'get_destination')->first();
+            $eta = \Enfa\Settings::where('key', '=', 'get_destination')->first();
             $eta_value = $eta->value;
 
             if ($walker_detail) {
@@ -600,7 +642,7 @@ class WebUserController extends BaseController {
             /* $var = Keywords::where('id', 4)->first(); */
 
             if ($current_request->confirmed_walker) {
-                $walker = Walker::find($current_request->confirmed_walker);
+                $walker = \Enfa\Walkers::find($current_request->confirmed_walker);
 
                 /* $rating = DB::table('review_walker')->where('walker_id', '=', $current_request->confirmed_walker)->avg('rating') ? : 0; */
                 $rating = $walker->rate;
@@ -642,21 +684,21 @@ class WebUserController extends BaseController {
 
         // Normal Payment
 
-        $request_id = Request::segment(3);
-        $request = Requests::where('id', $request_id)->first();
-        $reqserv = RequestServices::where('request_id', $request_id)->first();
-        $typess = ProviderType::where('id', $reqserv->type)->first();
+        $request_id = \Enfa\Requests::segment(3);
+        $request = \Enfa\Requests::where('id', $request_id)->first();
+        $reqserv = \Enfa\RequestServices::where('request_id', $request_id)->first();
+        $typess = \Enfa\ProviderType::where('id', $reqserv->type)->first();
 
         $total_amount = $request->total;
         $service_name = $typess->name;
 
-        $owner = Owner::where('id', $request->owner_id)->first();
-        $walker = Walker::where('id', $request->confirmed_walker)->first();
-        $admins = Admin::first();
+        $owner = \Enfa\Owners::where('id', $request->owner_id)->first();
+        $walker = \Enfa\Walkers::where('id', $request->confirmed_walker)->first();
+        $admins = \Enfa\Admin::first();
 
         // Adaptive payments
         // check if transfer is allowed
-        $transfersett = Settings::where('key', 'transfer')->first();
+        $transfersett = \Enfa\Settings::where('key', 'transfer')->first();
         $payRequest = new PayRequest();
         if ($transfersett->value == 1) {
 
@@ -706,7 +748,7 @@ class WebUserController extends BaseController {
     }
 
     public function paypalstatus() {
-        $request = Requests::find(Session::get('request_id'));
+        $request = \Enfa\Requests::find(Session::get('request_id'));
 
         $requestEnvelope = new RequestEnvelope("en_US");
         $paymentDetailsRequest = new PaymentDetailsRequest($requestEnvelope);
@@ -761,7 +803,7 @@ class WebUserController extends BaseController {
         {
             $fare=35;
         }
-       /* $request_typ = ProviderType::where('id', '=', $type)->first();
+       /* $request_typ = \Enfa\ProviderType::where('id', '=', $type)->first();
         $setbase_distance = $request_typ->base_distance;
         $setbase_price = $request_typ->base_price;
         $setdistance_price = $request_typ->price_per_unit_distance;
@@ -776,14 +818,14 @@ class WebUserController extends BaseController {
 
           $time = $data->rows[0]->elements[0]->duration->value; *//*
 
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         $distance = get_dist($latitude, $longitude, $d_latitude, $d_longitude);
         Log::info('data = ' . print_r($distance, true));
 
         if ($unit == 0) {
             $distanceNew = $distance * 0.001;
-            /* $setdistance_price = Settings::where('key', 'price_per_unit_distance')->first();
+            /* $setdistance_price = \Enfa\Settings::where('key', 'price_per_unit_distance')->first();
               $price_per_unit_distance = $setdistance_price->value * $distanceNew; *//*
             if ($distanceNew <= $setbase_distance) {
                 $price_per_unit_distance = 0;
@@ -792,7 +834,7 @@ class WebUserController extends BaseController {
             }
         } else {
             $distanceNew = $distance * 0.000621371;
-            /* $setdistance_price = Settings::where('key', 'price_per_unit_distance')->first();
+            /* $setdistance_price = \Enfa\Settings::where('key', 'price_per_unit_distance')->first();
               $price_per_unit_distance = $setdistance_price->value * $distanceNew; *//*
             if ($distanceNew <= $setbase_distance) {
                 $price_per_unit_distance = 0;
@@ -803,7 +845,7 @@ class WebUserController extends BaseController {
         $timeMinutes = $time * 0.0166667;
 
 
-        /* $settime_price = Settings::where('key', 'price_per_unit_time')->first();
+        /* $settime_price = \Enfa\Settings::where('key', 'price_per_unit_time')->first();
           $price_per_unit_time = $settime_price->value * $timeMinutes; *//*
         $price_per_unit_time = $settime_price * $timeMinutes;
 
@@ -823,10 +865,10 @@ class WebUserController extends BaseController {
             }
             $total = $base_price + $price_per_unit_distance + $price_per_unit_time;
         } else {
-            /* $setbase_price = Settings::where('key', 'base_price')->first();
+            /* $setbase_price = \Enfa\Settings::where('key', 'base_price')->first();
               $base_price = $setbase_price->value; *//*
             $base_price = $setbase_price;
-            /* $setdistance_price = Settings::where('key', 'price_per_unit_distance')->first();
+            /* $setdistance_price = \Enfa\Settings::where('key', 'price_per_unit_distance')->first();
               $price_per_unit_distance = $setdistance_price->value * $distanceNew; *//*
             if ($distanceNew <= $setbase_distance) {
                 $price_per_unit_distance = 0;
@@ -836,7 +878,7 @@ class WebUserController extends BaseController {
             $total = $base_price + $price_per_unit_distance + $price_per_unit_time;
         }
         if ($promo_code) {
-            $promosett = Settings::where('key', 'promotional_code_activation')->first();
+            $promosett = \Enfa\Settings::where('key', 'promotional_code_activation')->first();
             $promo_discount = 0;
             $total_amount = $total;
             if ($promosett->value == 1) {
@@ -889,10 +931,10 @@ class WebUserController extends BaseController {
         $distance = 0;
 
         $request_id = Session::get('request_id');
-        $request = Requests::where('id', $request_id)->first();
+        $request = \Enfa\Requests::where('id', $request_id)->first();
         $d_latitude = $request->D_latitude;
         $d_longitude = $request->D_longitude;
-        $walk_loc = WalkLocation::where('request_id', $request_id)->orderBy('id', 'desc')->first();
+        $walk_loc = \Enfa\WalkLocation::where('request_id', $request_id)->orderBy('id', 'desc')->first();
         $longitude = $walk_loc->longitude;
         $latitude = $walk_loc->latitude;
 
@@ -949,16 +991,16 @@ class WebUserController extends BaseController {
                 $code_id = NULL;
             }
 
-            $owner_data = Owner::find($owner_id);
+            $owner_data = \Enfa\Owners::find($owner_id);
 
-            $settings = Settings::where('key', 'default_search_radius')->first();
+            $settings = \Enfa\Settings::where('key', 'default_search_radius')->first();
             $distance = $settings->value;
 
             if (Input::has('type')) {
                 $type = Input::get('type');
                 if (!$type) {
                     // choose default type
-                    $provider_type = ProviderType::where('is_default', 1)->first();
+                    $provider_type = \Enfa\ProviderType::where('is_default', 1)->first();
 
                     if (!$provider_type) {
                         $type = 1;
@@ -990,23 +1032,23 @@ class WebUserController extends BaseController {
                     $message = "No " . Config::get('app.generic_keywords.Provider') . " found matching the service type.";
                 }
 
-                $settings = Settings::where('key', 'default_search_radius')->first();
+                $settings = \Enfa\Settings::where('key', 'default_search_radius')->first();
                 $distance = $settings->value;
-                $settings = Settings::where('key', 'default_distance_unit')->first();
+                $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
                 $unit = $settings->value;
                 if ($unit == 0) {
                     $multiply = 1.609344;
                 } elseif ($unit == 1) {
                     $multiply = 1;
                 }
-                $query = "SELECT walker.*, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ,8) as distance from walker where is_available = 1 and is_active = 1 and is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ) ,8) <= $distance and walker.deleted_at IS NULL and walker.id IN($typestring) order by distance";
+                $query = "SELECT walkers.*, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ,8) as distance from walker where is_available = 1 and is_active = 1 and is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ) ,8) <= $distance and walkers.deleted_at IS NULL and walkers.id IN($typestring) order by distance";
 
 
                 $walkers = DB::select(DB::raw($query));
                 $walker_list = array();
 
 
-                $owner = Owner::find($owner_id);
+                $owner = \Enfa\Owners::find($owner_id);
                 $owner->latitude = $latitude;
                 $owner->longitude = $longitude;
                 $owner->save();
@@ -1015,7 +1057,7 @@ class WebUserController extends BaseController {
                 $default_timezone = Config::get('app.timezone');
                 $offset = $this->get_timezone_offset($default_timezone, $user_timezone);
 
-                $request = new Requests;
+                $request = new \Enfa\Requests;
                 $request->owner_id = $owner_id;
                 if ($d_longitude != '' && $d_latitude != '') {
                     $request->D_latitude = $d_latitude;
@@ -1031,16 +1073,21 @@ class WebUserController extends BaseController {
                 //$request->request_start_time = date("Y-m-d H:i:s", strtotime(date("Y-m-d H:i:s")) + $offset);
                 $request->save();
 
-                $request_service = new RequestServices;
+                $request_service = new \Enfa\RequestServices;
                 $request_service->type = $type;
                 $request_service->request_id = $request->id;
                 $request_service->save();
-               $servername = "localhost";
-$username = "root";
-$password = "uber123!";
-$dbname = "uberforx";
+                /*
+                quitar de aqui
+                */
+                $servername = "localhost";
+                $username = "root";
+                $password = "uber123!";
+                $dbname = "uberforx";
+
 
 // Create connection
+
 $conn = new mysqli($servername, $username, $password, $dbname);
 // Check connection
 if ($conn->connect_error) {
@@ -1069,14 +1116,14 @@ $conn->close();
                     }
                     $request_meta->save();
                 }
-                $req = Requests::find($request->id);
+                $req = \Enfa\Requests::find($request->id);
                 $req->current_walker = $first_walker_id;
                 $req->confirmed_walker = 0;
                 $req->payment_mode = $payment_type;
                 $req->promo_code = $code_id;
                 $req->save();
 
-                $settings = Settings::where('key', 'provider_timeout')->first();
+                $settings = \Enfa\Settings::where('key', 'provider_timeout')->first();
                 //$time_left = $settings->value;
                 $time_left=60;
 
@@ -1085,7 +1132,7 @@ $conn->close();
                 //$message = json_encode("mensaje");
 
                 //haber
-                //$settings = Settings::where('key', 'provider_timeout')->first();
+                //$settings = \Enfa\Settings::where('key', 'provider_timeout')->first();
                   // $time_left = $settings->value;
 
                   $msg_array = array();
@@ -1100,7 +1147,7 @@ $conn->close();
                     //     $prvdr=ProviderServices::where('provider_id',$provider_id)->where('type',2)->first();
                     //     $msg_array['tow_my_car']=$prvdr->price_per_unit_distance;
                     // }
-                   // $owner = Owner::find($owner_id);
+                   // $owner = \Enfa\Owners::find($owner_id);
                     $request_data = array();
                     $request_data['owner'] = array();
                     $request_data['owner']['name'] = $owner->first_name . " " . $owner->last_name;
@@ -1132,14 +1179,14 @@ $conn->close();
             return Redirect::to('/user/request-trip')->with('message', $message)->with('type', $type);
 
 
-            $walker = Walker::find($first_walker_id);
+            $walker = \Enfa\Walkers::find($first_walker_id);
             if ($walker) {
 
                 $msg_array = array();
                 $msg_array['unique_id'] = 1;
                 $msg_array['request_id'] = $request->id;
                 $msg_array['time_left_to_respond'] = $time_left;
-                $owner = Owner::find($owner_id);
+                $owner = \Enfa\Owners::find($owner_id);
                 $request_data = array();
                 $request_data['owner'] = array();
                 $request_data['owner']['name'] = $owner->first_name . " " . $owner->last_name;
@@ -1155,7 +1202,7 @@ $conn->close();
 
 
                 $request_data['dog'] = array();
-                if ($dog = Dog::find($owner->dog_id)) {
+                if ($dog = \Enfa\Dog::find($owner->dog_id)) {
 
                     $request_data['dog']['name'] = $dog->name;
                     $request_data['dog']['age'] = $dog->age;
@@ -1171,7 +1218,7 @@ $conn->close();
             }
 
             // Send SMS
-          /*  $settings = Settings::where('key', 'sms_request_created')->first();
+          /*  $settings = \Enfa\Settings::where('key', 'sms_request_created')->first();
             $pattern = $settings->value;
             $pattern = str_replace('%user%', $owner_data->first_name . " " . $owner_data->last_name, $pattern);
             $pattern = str_replace('%id%', $request->id, $pattern);
@@ -1184,13 +1231,13 @@ $conn->close();
 
 
             // send email
-            /* $settings = Settings::where('key', 'email_new_request')->first();
+            /* $settings = \Enfa\Settings::where('key', 'email_new_request')->first();
               $pattern = $settings->value;
               $pattern = str_replace('%id%', $request->id, $pattern);
               $pattern = str_replace('%url%', web_url() . "/admin/request/map/" . $request->id, $pattern);
               $subject = "New Request Created";
               email_notification(1, 'admin', $pattern, $subject); */
-            /*$settings = Settings::where('key', 'admin_email_address')->first();
+            /*$settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
             $admin_email = $settings->value;
             $follow_url = web_url() . "/usuarios/entrar";
             $pattern = array('admin_eamil' => $admin_email, 'trip_id' => $request->id, 'follow_url' => $follow_url);
@@ -1202,7 +1249,7 @@ $conn->close();
     }
 
     public function userSkipReview() {
-        $request_id = Request::segment(3);
+        $request_id = \Enfa\Requests::segment(3);
         Session::put('skipReview', 1);
         return Redirect::to('/user/request-trip');
     }
@@ -1254,7 +1301,7 @@ $conn->close();
             return Redirect::to('user/signup')->with('error', 'Invalid Phone Number Format');
         } else {
             if (Owner::where('email', $email)->count() == 0) {
-                $owner = new Owner;
+                $owner = new \Enfa\Owners;
                 $owner->first_name = $first_name;
                 $owner->last_name = $last_name;
                 $owner->email = $email;
@@ -1276,33 +1323,33 @@ $conn->close();
                 }
                 $referral_code1 .= $owner->id;
                 /* Referral entry */
-                $ledger = new Ledger;
+                $ledger = new \Enfa\Ledgers;
                 $ledger->owner_id = $owner->id;
                 $ledger->referral_code = $referral_code1;
                 $ledger->save();
                 if ($referral_code != "") {
-                    if ($ledger = Ledger::where('referral_code', $referral_code)->first()) {
+                    if ($ledger = \Enfa\Ledgers::where('referral_code', $referral_code)->first()) {
                         $referred_by = $ledger->owner_id;
-                        /* $settings = Settings::where('key', 'default_referral_bonus')->first();
+                        /* $settings = \Enfa\Settings::where('key', 'default_referral_bonus')->first();
                           $referral_bonus = $settings->value;
 
-                          $ledger = Ledger::find($ledger->id);
+                          $ledger = \Enfa\Ledgers::find($ledger->id);
                           $ledger->total_referrals = $ledger->total_referrals + 1;
                           $ledger->amount_earned = $ledger->amount_earned + $referral_bonus;
                           $ledger->save(); */
-                        $settings = Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
+                        $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refered_user')->first();
                         $refered_user = $settings->value;
 
-                        $settings = Settings::where('key', 'default_referral_bonus_to_refereel')->first();
+                        $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refereel')->first();
                         $referral = $settings->value;
 
-                        $ledger = Ledger::find($ledger->id);
+                        $ledger = \Enfa\Ledgers::find($ledger->id);
                         $ledger->total_referrals = $ledger->total_referrals + 1;
                         $ledger->amount_earned = $ledger->amount_earned + $refered_user;
                         $ledger->save();
 
-                        $ledger1 = Ledger::where('owner_id', $owner->id)->first();
-                        $ledger1 = Ledger::find($ledger1->id);
+                        $ledger1 = \Enfa\Ledgers::where('owner_id', $owner->id)->first();
+                        $ledger1 = \Enfa\Ledgers::find($ledger1->id);
                         $ledger1->amount_earned = $ledger1->amount_earned + $referral;
                         $ledger1->save();
 
@@ -1317,12 +1364,12 @@ $conn->close();
                 /* $subject = "Welcome On Board";
                   $email_data['name'] = $owner->first_name;
                   send_email($owner->id, 'owner', $email_data, $subject, 'userregister'); */
-                $settings = Settings::where('key', 'admin_email_address')->first();
+                $settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
                 $admin_email = $settings->value;
                 $pattern = array('admin_eamil' => $admin_email, 'name' => ucwords($owner->first_name . " " . $owner->last_name), 'web_url' => web_url());
                 $subject = "Bienvenido a " . ucwords(Config::get('app.website_title')) . ", " . ucwords($owner->first_name . " " . $owner->last_name) . "";
                 email_notification($owner->id, 'owner', $pattern, $subject, 'user_register', null);
-                return Redirect::to('usuarios/entrar')->with('success', 'Has sido registrado con exito, bienvenido a Kour Urban Delivery. <br>Please Login');
+                return Redirect::to('usuarios/entrar')->with('success', 'Has sido registrado con exito, bienvenido a Enfadelivery-Transport- Urban Delivery. <br>Please Login');
             } else {
                 return Redirect::to('usuarios/registro')->with('error', 'Este correo ya esta registrado.');
             }
@@ -1335,7 +1382,7 @@ $conn->close();
 
     public function userForgotPassword() {
         $email = Input::get('email');
-        $owner = Owner::where('email', $email)->first();
+        $owner = \Enfa\Owners::where('email', $email)->first();
         if ($owner) {
             $new_password = time();
             $new_password .= rand();
@@ -1345,12 +1392,12 @@ $conn->close();
             $owner->save();
 
             // send email
-            /* $settings = Settings::where('key', 'email_forgot_password')->first();
+            /* $settings = \Enfa\Settings::where('key', 'email_forgot_password')->first();
               $pattern = $settings->value;
               $pattern = str_replace('%password%', $new_password, $pattern);
               $subject = "Your New Password";
               email_notification($owner->id, 'owner', $pattern, $subject); */
-            $settings = Settings::where('key', 'admin_email_address')->first();
+            $settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
             $admin_email = $settings->value;
             $login_url = web_url() . "/usuarios/entrar";
             $pattern = array('name' => $owner->first_name . " " . $owner->last_name, 'admin_eamil' => $admin_email, 'new_password' => $new_password, 'login_url' => $login_url);
@@ -1363,9 +1410,10 @@ $conn->close();
     }
 
     public function userVerify() {
+      //return('en usuarios verify');
         $email = Input::get('email');
         $password = Input::get('password');
-        $owner = Owner::where('email', '=', $email)->first();
+        $owner = \Enfa\Owners::where('email', '=', $email)->first();
         if ($owner && Hash::check($password, $owner->password)) {
             Session::put('user_id', $owner->id);
             Session::put('user_name', $owner->first_name . " " . $owner->last_name);
@@ -1384,7 +1432,7 @@ $conn->close();
     public function userVerifyFB($mail, $pass) {
         $email = $mail;
         $password = $pass;
-        $owner = Owner::where('email', '=', $email)->first();
+        $owner = Owners::where('email', '=', $email)->first();
         if ($owner && Hash::check($password, $owner->password)) {
             Session::put('user_id', $owner->id);
             Session::put('user_name', $owner->first_name . " " . $owner->last_name);
@@ -1402,23 +1450,24 @@ $conn->close();
     }
 
     public function userLogout() {
-        Session::flush();
-        return Redirect::to('/usuarios/entrar');
+            Session::flush();
+            return \Redirect::to('owner/login');
+
     }
 
     public function userTripDetail() {
-        $id = Request::segment(3);
+        $id = \Enfa\Requests::segment(3);
         $owner_id = Session::get('user_id');
-        $request = Requests::find($id);
-        $request_service = RequestServices::find($id);
+        $request = \Enfa\Requests::find($id);
+        $request_service = \Enfa\RequestServices::find($id);
         if ($request->owner_id == $owner_id) {
-            $locations = WalkLocation::where('request_id', $id)
+            $locations = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id')
                     ->get();
-            $start = WalkLocation::where('request_id', $id)
+            $start = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id')
                     ->first();
-            $end = WalkLocation::where('request_id', $id)
+            $end = \Enfa\WalkLocation::where('request_id', $id)
                     ->orderBy('id', 'desc')
                     ->first();
             $map = "https://maps-api-ssl.google.com/maps/api/staticmap?size=249x249&style=feature:landscape|visibility:off&style=feature:poi|visibility:off&style=feature:transit|visibility:off&style=feature:road.highway|element:geometry|lightness:39&style=feature:road.local|element:geometry|gamma:1.45&style=feature:road|element:labels|gamma:1.22&style=feature:administrative|visibility:off&style=feature:administrative.locality|visibility:on&style=feature:landscape.natural|visibility:on&scale=2&markers=shadow:false|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-start@2x.png|$start->latitude,$start->longitude&markers=shadow:false|scale:2|icon:http://d1a3f4spazzrp4.cloudfront.net/receipt-new/marker-finish@2x.png|$end->latitude,$end->longitude&path=color:0x2dbae4ff|weight:4";
@@ -1433,7 +1482,7 @@ $conn->close();
             $end_location = json_decode(file_get_contents("https://maps.googleapis.com/maps/api/geocode/json?latlng=$end->latitude,$end->longitude"), TRUE);
             $end_address = $end_location['results'][0]['formatted_address'];
 
-            $walker = Walker::find($request->confirmed_walker);
+            $walker = \Enfa\Walkers::find($request->confirmed_walker);
             $walker_review = WalkerReview::where('request_id', $id)->first();
             if ($walker_review) {
                 $rating = round($walker_review->rating);
@@ -1464,14 +1513,18 @@ $conn->close();
     }
 
     public function userTrips() {
+      $requests = array();
+
         $owner_id = Session::get('user_id');
-        $requests = Requests::where('owner_id', $owner_id)
+
+        $requests = DB::table('requests')
+                ->join('owners', 'requests.owner_id', '=', 'owners.id')
                 ->where('is_completed', 1)
-                ->leftJoin('walker', 'walker.id', '=', 'request.confirmed_walker')
-                ->leftJoin('walker_services', 'walker.id', '=', 'walker_services.provider_id')
-                ->leftJoin('walker_type', 'walker_type.id', '=', 'walker_services.type')
+                ->leftJoin('walkers', 'walkers.id', '=', 'requests.confirmed_walker')
+                ->leftJoin('walker_services', 'walkers.id', '=', 'walker_services.provider_id')
+                ->leftJoin('walker_types', 'walker_types.id', '=', 'walker_services.type')
                 ->orderBy('request_start_time', 'desc')
-                ->select('request.id', 'request_start_time', 'walker.first_name', 'walker.last_name', 'request.total as total', 'walker_type.name as type')
+                ->select('requests.id', 'request_start_time', 'walkers.first_name', 'walkers.last_name', 'requests.total as total', 'walker_types.name as type')
                 ->get();
 
         /* $var = Keywords::where('id', 4)->first(); */
@@ -1482,14 +1535,38 @@ $conn->close();
                         ->with('requests', $requests);
     }
 
-    public function userProfile() {
-        $owner_id = Session::get('user_id');
-        $user = Owner::find($owner_id);
-        return View::make('web.userProfile')
-                        ->with('title', 'My Profile')
-                        ->with('user', $user);
-    }
+    /**
+     * Show the profile for the given user.
+     *
+     * @param  Request  $request
+     * @param  int  $id
+     * @return Response
+     */
 
+       public function userProfile() {
+           $owner_id = Session::get('user_id');
+           $user = \Enfa\Owners::where('owners.id' , '=' , $owner_id)->first();
+           $type = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+           $ps = \Enfa\ProviderServices::where('provider_id', $owner_id)->get();
+           $counter = $user->rate_count;
+           $picture = $user->picture;
+           //revisar aqui el counter para la view ...
+
+
+    return View::make('web.userProfile')
+                    ->with('title', 'My Profile')
+                    ->with('user', $user);
+
+
+          /* return View::make('provider.providerProfile')
+                           ->with('title', 'My Provider Profile')
+                           ->with('user', $user)
+                           ->with('type', $type)
+                           ->with('ps', $ps)
+                           ->with('counter', $counter)
+                           ->with('picture',$picture);
+          */
+       }
     public function updateUserProfile() {
 
         $owner_id = Session::get('user_id');
@@ -1520,7 +1597,7 @@ $conn->close();
             return Redirect::to('/user/profile')->with('error', 'Invalid image format (Allowed formats jpeg,bmp and png)');
         } else {
 
-            $owner = Owner::find($owner_id);
+            $owner = \Enfa\Owners::find($owner_id);
 
             if (Input::hasFile('picture')) {
                 if ($owner->picture != "") {
@@ -1556,7 +1633,7 @@ $conn->close();
 
                     $s3_url = $s3->getObjectUrl(Config::get('app.s3_bucket'), $file_name);
                 } else {
-                    $s3_url = asset_url() . '/uploads/' . $local_url;
+                    $s3_url = asset() . '/uploads/' . $local_url;
                 }
 
                 if (isset($owner->picture)) {
@@ -1589,7 +1666,7 @@ $conn->close();
         $confirm_password = Input::get('confirm_password');
 
         $owner_id = Session::get('user_id');
-        $owner = Owner::find($owner_id);
+        $owner = \Enfa\Owners::find($owner_id);
 
 
         if ($new_password === $confirm_password) {
@@ -1615,8 +1692,8 @@ $conn->close();
 
     public function userPayments() {
         $owner_id = Session::get('user_id');
-        $payments = Payment::where('owner_id', $owner_id)->get();
-        $ledger = Ledger::where('owner_id', $owner_id)->first();
+        $payments =  \Enfa\Payments::where('owner_id', $owner_id)->get();
+        $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
 
         return View::make('web.userPayments')
                         ->with('title', 'Payments and Credits')
@@ -1626,8 +1703,8 @@ $conn->close();
 
     public function userPaymentsFB() {
         $owner_id = Session::get('user_id');
-        $payments = Payment::where('owner_id', $owner_id)->get();
-        $ledger = Ledger::where('owner_id', $owner_id)->first();
+        $payments =  \Enfa\Payments::where('owner_id', $owner_id)->get();
+        $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
 
         return View::make('web.userPaymentsFB')
                         ->with('title', 'Payments and Credits')
@@ -1637,8 +1714,8 @@ $conn->close();
 
     public function deleteUserPayment() {
         $owner_id = Session::get('user_id');
-        $id = Request::segment(4);
-        Payment::where('owner_id', $owner_id)
+        $id = \Enfa\Requests::segment(4);
+         \Enfa\Payments::where('owner_id', $owner_id)
                 ->where('id', $id)
                 ->delete();
         $message = "Your card is successfully removed";
@@ -1648,20 +1725,25 @@ $conn->close();
 
     public function updateUserCode() {
         $owner_id = Session::get('user_id');
+        return Redirect::to('/user/payments')->with('message', $message)->with('type', $owner_id);
+    }
+
+    public function updateUserCode2() {
+        $owner_id = Session::get('user_id');
         $code = Input::get('code');
-        $code_count = Ledger::where('referral_code', '=', $code)->where('owner_id', '!=', $owner_id)->count();
+        $code_count = \Enfa\Ledgers::where('referral_code', '=', $code)->where('owner_id', '!=', $owner_id)->count();
         if ($code_count) {
             $message = "This referral code is already in use. Please choose a new one";
             $type = "danger";
         } else {
-            $ledger = Ledger::where('owner_id', $owner_id)->first();
+            $ledger = \Enfa\Ledgers::where('owner_id', $owner_id)->first();
             if ($ledger) {
                 $ledger->referral_code = $code;
                 $ledger->save();
                 $message = "Your referral code is successfully updated";
                 $type = "success";
             } else {
-                $ledger = new Ledger;
+                $ledger = new \Enfa\Ledgers;
                 $ledger->owner_id = $owner_id;
                 $ledger->referral_code = $code;
                 $ledger->save();
@@ -1678,10 +1760,10 @@ $conn->close();
             $latitude = Input::get('latitude');
             $longitude = Input::get('longitude');
             $typestring = Input::get('type');
-            $settings = Settings::where('key', 'default_search_radius')->first();
+            $settings = \Enfa\Settings::where('key', 'default_search_radius')->first();
 
             $distance = $settings->value;
-            $settings = Settings::where('key', 'default_distance_unit')->first();
+            $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
             $unit = $settings->value;
             if ($unit == 0) {
                 $multiply = 1.609344;
@@ -1689,9 +1771,9 @@ $conn->close();
                 $multiply = 1;
             }
             if ($typestring == "") {
-                $query = "SELECT walker.id,walker.first_name,walker.last_name,walker.latitude,walker.longitude, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ,8) as distance from walker where is_available = 1 and is_active = 1 and is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ) ,8) <= $distance order by distance";
+                $query = "SELECT walkers.id,walkers.first_name,walkers.last_name,walkers.latitude,walkers.longitude, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ,8) as distance from walker where is_available = 1 and is_active = 1 and is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(latitude) ) * cos( radians(longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(latitude) ) ) ) ,8) <= $distance order by distance";
             } else {
-                $query = "SELECT walker.id,walker.first_name,walker.last_name,walker.latitude,walker.longitude, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(walker.latitude) ) * cos( radians(walker.longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(walker.latitude) ) ) ,8) as distance from walker JOIN walker_services where walker.is_available = 1 and walker.is_active = 1 and walker.is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(walker.latitude) ) * cos( radians(walker.longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(walker.latitude) ) ) ) ,8) <= $distance and walker.id = walker_services.provider_id and walker_services.type = $typestring order by distance";
+                $query = "SELECT walkers.id,walkers.first_name,walkers.last_name,walkers.latitude,walkers.longitude, ROUND(" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(walkers.latitude) ) * cos( radians(walkers.longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(walkers.latitude) ) ) ,8) as distance from walker JOIN walker_services where walkers.is_available = 1 and walkers.is_active = 1 and walkers.is_approved = 1 and ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * cos( radians(walkers.latitude) ) * cos( radians(walkers.longitude) - radians('$longitude') ) + sin( radians('$latitude') ) * sin( radians(walkers.latitude) ) ) ) ,8) <= $distance and walkers.id = walker_services.provider_id and walker_services.type = $typestring order by distance";
             }
             $walkers = DB::select(DB::raw($query));
 
@@ -1719,7 +1801,7 @@ $conn->close();
             $destination = Input::get('destination');
             $source = Input::get('source');
 
-            $request = Requests::where('id', $request_id)->first();
+            $request = \Enfa\Requests::where('id', $request_id)->first();
 
             $splits = explode(',', $mail_ids);
             $user_name = Session::get('user_name');

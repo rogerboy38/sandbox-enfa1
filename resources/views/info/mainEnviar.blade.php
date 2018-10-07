@@ -1,11 +1,11 @@
 <form class="row m-0">
             <div class="col-xs-12  col-md-3">
               <label for="">Origen</label>
-              <input type="text" class="form-control" value="CDMX">
+              <input type="text" class="form-control" value={!!$origen[1]!!}>
             </div>
             <div class="col-xs-12  col-md-3">
               <label for="">Destino</label>
-              <input type="text" class="form-control" value="Tijuana">
+              <input type="text" class="form-control" value={{$destino}}>
             </div>
             <div class="col-xs-12  col-md-3">
               <label for="">Fecha</label>

@@ -1,38 +1,95 @@
 <?php
+
 namespace Enfa\Http\Controllers;
 
-class AdminController extends BaseController {
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\admins as admins;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Support\Facades\Config;
+use Input;
+use Session;
+use Redirect;
+use Auth;
+use \Lang;
+use Illuminate\Support\Facades\Log;
+use Request;
 
-    public function __construct() {
-        $this->beforeFilter(function () {
-            if (!Auth::check()) {
-                $url = URL::current();
-                $routeName = Route::currentRouteName();
-                Log::info('current route =' . print_r(Route::currentRouteName(), true));
+class AdminController extends Controller
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Login Controller
+    |--------------------------------------------------------------------------
+    |
+    | This controller handles authenticating users for the application and
+    | redirecting them to your home screen. The controller uses a trait
+    | to conveniently provide its functionality to your applications.
+    |
+    */
 
-                if ($routeName != "AdminLogin" && $routeName != 'admin') {
-                    Session::put('pre_admin_login_url', $url);
-                }
-                return Redirect::to('/admin/login');
+    use AuthenticatesUsers;
+    protected $loginView = 'administrators.adminlayoutlogin';
+
+    public function ShowLoginAdmin()
+    {
+      // solo para admins
+
+      return \View::make('administrators.adminlayoutlogin');
+
+
+
+    }
+    /**
+     * Where to redirect users after login.
+     *
+     * @var string
+     */
+    protected $redirectTo = '/admin/report';
+
+    /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //parent::__construct();
+        $this->middleware('guest')->except('logout');
+    }
+
+
+
+
+    public function adminVerify() {
+        $email = Input::get('email');
+        $password = Input::get('password');
+        $admins = \Enfa\Admin::where('username', '=', $email)->first();
+        if ($admins && Hash::check($password, $admins->password)) {
+            Session::put('user_id', $admins->id);
+            Session::put('user_name', $admins->first_name . " " . $admins->last_name);
+            Session::put('user_pic', $admins->picture);
+            if (Session::has('pre_login_url')) {
+                $url = Session::get('pre_login_url');
+                Session::forget('pre_login_url');
+                return Redirect::to($url);
+            } else {
+                return Redirect::to('admin/report');
             }
-        }, array('except' => array('login', 'verify', 'add', 'walker_xml')));
+        } else {
+            return Redirect::to('admin/login')->with('error', 'Invalid email and password');
+        }
     }
-
-    private function _braintreeConfigure() {
-        Braintree_Configuration::environment(Config::get('app.braintree_environment'));
-        Braintree_Configuration::merchantId(Config::get('app.braintree_merchant_id'));
-        Braintree_Configuration::publicKey(Config::get('app.braintree_public_key'));
-        Braintree_Configuration::privateKey(Config::get('app.braintree_private_key'));
-    }
-
-    public function add() {
-        $user = new Admin;
-        $user->username = Input::get('username');
-        $user->password = $user->password = Hash::make(Input::get('password'));
-        $user->save();
-    }
-
     public function report() {
+
 
         $braintree_environment = Config::get('app.braintree_environment');
         $braintree_merchant_id = Config::get('app.braintree_merchant_id');
@@ -96,10 +153,10 @@ class AdminController extends BaseController {
         $start_date = date("Y-m-d", strtotime($start_date));
         $end_date = date("Y-m-d", strtotime($end_date));
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -107,35 +164,35 @@ class AdminController extends BaseController {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
 
         if (Input::get('status') && Input::get('status') != 0) {
             if ($status == 1) {
-                $query = $query->where('request.is_completed', '=', 1);
+                $query = $query->where('requests.is_completed', '=', 1);
             } else {
-                $query = $query->where('request.is_cancelled', '=', 1);
+                $query = $query->where('requests.is_cancelled', '=', 1);
             }
         } else {
 
             $query = $query->where(function ($que) {
-                $que->where('request.is_completed', '=', 1)
-                        ->orWhere('request.is_cancelled', '=', 1);
+                $que->where('requests.is_completed', '=', 1)
+                        ->orWhere('requests.is_cancelled', '=', 1);
             });
         }
 
-        $walks = $query->select('request.request_start_time', 'walker_type.name as type', 'request.ledger_payment', 'request.card_payment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.payment_mode', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.promo_payment');
+        $walks = $query->select('requests.request_start_time', 'walker_types.name as type', 'requests.ledger_payment', 'requests.card_payment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.payment_mode', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.promo_payment');
         $walks = $walks->orderBy('id', 'DESC')->paginate(10);
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -143,20 +200,20 @@ class AdminController extends BaseController {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
 
-        $completed_rides = $query->where('request.is_completed', 1)->count();
+        $completed_rides = $query->where('requests.is_completed', 1)->count();
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -164,19 +221,19 @@ class AdminController extends BaseController {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $cancelled_rides = $query->where('request.is_cancelled', 1)->count();
+        $cancelled_rides = $query->where('requests.is_cancelled', 1)->count();
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -184,19 +241,19 @@ class AdminController extends BaseController {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $card_payment = $query->where('request.is_completed', 1)->sum('request.card_payment');
+        $card_payment = $query->where('requests.is_completed', 1)->sum('requests.card_payment');
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -204,14 +261,14 @@ class AdminController extends BaseController {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $credit_payment = $query->where('request.is_completed', 1)->sum('request.ledger_payment');
-        $cash_payment = $query->where('request.payment_mode', 1)->sum('request.total');
+        $credit_payment = $query->where('requests.is_completed', 1)->sum('requests.ledger_payment');
+        $cash_payment = $query->where('requests.payment_mode', 1)->sum('requests.total');
 
 
         if (Input::get('submit') && Input::get('submit') == 'Download_Report') {
@@ -219,14 +276,14 @@ class AdminController extends BaseController {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename=data.csv');
             $handle = fopen('php://output', 'w');
-            $settings = Settings::where('key', 'default_distance_unit')->first();
+            $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
             $unit = $settings->value;
             if ($unit == 0) {
                 $unit_set = 'kms';
             } elseif ($unit == 1) {
                 $unit_set = 'miles';
             }
-            fputcsv($handle, array('ID', 'Date', 'Type of Service', 'Provider', 'Owner', 'Distance (' . $unit_set . ')', 'Time (Minutes)', 'Payment Mode', 'Earning', 'Referral Bonus', 'Promotional Bonus', 'Card Payment'));
+            fputcsv($handle, array('ID', 'Date', 'Type of Service', 'Provider', 'owners', 'Distance (' . $unit_set . ')', 'Time (Minutes)', 'Payment Mode', 'Earning', 'Referral Bonus', 'Promotional Bonus', 'Card Payment'));
             foreach ($walks as $request) {
                 $pay_mode = "Card Payment";
                 if ($request->payment_mode == 1) {
@@ -266,10 +323,11 @@ class AdminController extends BaseController {
             /* $currency_selected = Keywords::where('alias', 'Currency')->first();
               $currency_sel = $currency_selected->keyword; */
             $currency_sel = Config::get('app.generic_keywords.Currency');
-            $walkers = Walker::get();
-            $owners = Owner::get();
+            $walkers = \Enfa\Walkers::get();
+            $owners = \Enfa\Owners::get();
+            $install=\Enfa\Informations::get();
             $title = ucwords(trans('customize.Dashboard'));
-            return View::make('dashboard')
+            return View::make('dashboard.dashboard')
                             ->with('title', $title)
                             ->with('page', 'dashboard')
                             ->with('walks', $walks)
@@ -284,23 +342,39 @@ class AdminController extends BaseController {
                             ->with('credit_payment', $credit_payment);
         }
     }
+//inicia old
+
+    private function _braintreeConfigure() {
+        Braintree_Configuration::environment(Config::get('app.braintree_environment'));
+        Braintree_Configuration::merchantId(Config::get('app.braintree_merchant_id'));
+        Braintree_Configuration::publicKey(Config::get('app.braintree_public_key'));
+        Braintree_Configuration::privateKey(Config::get('app.braintree_private_key'));
+    }
+
+    public function add() {
+        $user = new Admin;
+        $user->username = Input::get('username');
+        $user->password = $user->password = Hash::make(Input::get('password'));
+        $user->save();
+    }
+
 
     //admin control
 
     public function admins() {
         Session::forget('type');
         Session::forget('valu');
-        $admins = Admin::paginate(10);
+        $admins = \Enfa\Admin::paginate(10);
         $title = ucwords(trans('customize.admin_control'));
-        return View::make('admins')
+        return View::make('administrators.admins')
                         ->with('title', $title)
                         ->with('page', 'settings')
                         ->with('admin', $admins);
     }
 
     public function add_admin() {
-        $admin = Admin::all();
-        return View::make('add_admin')
+        $admin = \Enfa\Admin::all();
+        return View::make('dashboard.add_admin')
                         ->with('title', 'Add Admin')
                         ->with('page', 'add_admin')
                         ->with('admin', $admin);
@@ -323,8 +397,8 @@ class AdminController extends BaseController {
         if ($validator->fails()) {
             $error_messages = $validator->messages()->first();
             Session::put('msg', $error_messages);
-            $admin = Admin::all();
-            return View::make('add_admin')
+            $admin = \Enfa\Admin::all();
+            return View::make('dashboard.add_admin')
                             ->with('title', 'Add Admin')
                             ->with('page', 'add_admin')
                             ->with('admin', $admin);
@@ -335,30 +409,30 @@ class AdminController extends BaseController {
             $admin->username = $username;
             $admin->password = $admin->password = $password;
             $admin->save();
-            return Redirect::to("/admin/admins?success=1");
+            return Redirect::to('/admin/admins?success=1');
         }
     }
 
     public function edit_admins() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $admin = Admin::find($id);
+        $admin = \Enfa\Admin::find($id);
         Log::info("admin = " . print_r($admin, true));
         $title = ucwords('Edit Admin' . " : " . $admin->username);
         if ($admin) {
-            return View::make('edit_admin')
+            return View::make('dashboard.edit_admin')
                             ->with('title', $title)
                             ->with('page', 'settings')
                             ->with('success', $success)
                             ->with('admin', $admin);
         } else {
-            return View::make('notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
     public function update_admin() {
 
-        $admin = Admin::find(Input::get('id'));
+        $admin = \Enfa\Admin::find(Input::get('id'));
         $username = Input::get('username');
         $old_pass = Input::get('old_password');
         $new_pass = Input::get('new_password');
@@ -383,13 +457,13 @@ class AdminController extends BaseController {
             Session::put('msg', $error_messages);
             if ($admin) {
                 $title = ucwords('Edit Admin' . " : " . $admin->username);
-                return View::make('edit_admin')
+                return View::make('dashboard.edit_admin')
                                 ->with('title', $title)
                                 ->with('page', 'admins')
                                 ->with('success', '')
                                 ->with('admin', $admin);
             } else {
-                return View::make('notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+                return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
             }
         } else {
 
@@ -406,43 +480,44 @@ class AdminController extends BaseController {
                 }
             }
             $admin->save();
-            return Redirect::to("/admin/admins");
+            @csfr;
+            return Redirect::to('/admin/admins');
         }
     }
 
     public function delete_admin() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $admin = Admin::find($id);
+        $admin = \Enfa\Admin::find($id);
         if ($admin) {
-            Admin::where('id', $id)->delete();
-            return Redirect::to("/admin/admins?success=1");
+            \Enfa\Admin::where('id', $id)->delete();
+            return Redirect::to('/admin/admins?success=1');
         } else {
-            return View::make('notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
     public function banking_provider() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $provider = Walker::find($id);
+        $provider = \Enfa\Walkers::find($id);
         if ($provider) {
             $title = ucwords('Banking Details' . " : " . $provider->first_name . " " . $provider->last_name);
             if (Config::get('app.default_payment') == 'stripe') {
-                return View::make('banking_provider_stripe')
+                return View::make('dashboard.banking_provider_stripe')
                                 ->with('title', $title)
                                 ->with('page', 'walkers')
                                 ->with('success', $success)
                                 ->with('provider', $provider);
             } else {
-                return View::make('banking_provider_braintree')
+                return View::make('dashboard.banking_provider_braintree')
                                 ->with('title', $title)
                                 ->with('page', 'walkers')
                                 ->with('success', $success)
                                 ->with('provider', $provider);
             }
         } else {
-            return View::make('notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
@@ -481,15 +556,15 @@ class AdminController extends BaseController {
 
         Log::info('res = ' . print_r($result, true));
         if ($result->success) {
-            $pro = Walker::where('id', Input::get('id'))->first();
+            $pro = \Enfa\Walkers::where('id', Input::get('id'))->first();
             $pro->merchant_id = $result->merchantAccount->id;
             $pro->save();
             Log::info(print_r($pro, true));
             Log::info('Adding banking details to provider from Admin = ' . print_r($result, true));
-            return Redirect::to("/admin/providers");
+            return Redirect::to('/admin/providers');
         } else {
             Log::info('Error in adding banking details: ' . $result->message);
-            return Redirect::to("/admin/providers");
+            return Redirect::to('/admin/providers');
         }
     }
 
@@ -509,7 +584,7 @@ class AdminController extends BaseController {
 
             Log::info('recipient = ' . print_r($recipient, true));
 
-            $pro = Walker::where('id', Input::get('id'))->first();
+            $pro = \Enfa\Walkers::where('id', Input::get('id'))->first();
             $pro->merchant_id = $recipient->id;
             $pro->account_id = $recipient->active_account->id;
             $pro->last_4 = $recipient->active_account->last4;
@@ -519,7 +594,7 @@ class AdminController extends BaseController {
         } catch (Exception $e) {
             Log::info('Error in Stripe = ' . print_r($e, true));
         }
-        return Redirect::to("/admin/providers");
+        return Redirect::to('/admin/providers');
     }
 
     public function index() {
@@ -529,9 +604,9 @@ class AdminController extends BaseController {
     public function get_document_types() {
         Session::forget('type');
         Session::forget('valu');
-        $types = Document::paginate(10);
+        $types = \Enfa\Documents::paginate(10);
         $title = ucwords(trans('customize.Documents')); /* 'Document Types' */
-        return View::make('list_document_types')
+        return View::make('dashboard.list_document_types')
                         ->with('title', $title)
                         ->with('page', 'document-type')
                         ->with('types', $types);
@@ -541,9 +616,9 @@ class AdminController extends BaseController {
         Session::forget('type');
         Session::forget('valu');
         $success = Input::get('success');
-        $promo_codes = PromoCodes::paginate(10);
+        $promo_codes = \Enfa\PromoCodes::paginate(10);
         $title = ucwords(trans('customize.promo_codes')); /* 'Promo Codes' */
-        return View::make('list_promo_codes')
+        return View::make('dashboard.list_promo_codes')
                         ->with('title', $title)
                         ->with('page', 'promo_code')
                         ->with('success', $success)
@@ -556,27 +631,27 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'docid') {
-            $types = Document::where('id', $valu)->paginate(10);
+            $types = \Enfa\Documents::where('id', $valu)->paginate(10);
         } elseif ($type == 'docname') {
-            $types = Document::where('name', 'like', '%' . $valu . '%')->paginate(10);
+            $types = \Enfa\Documents::where('name', 'like', '%' . $valu . '%')->paginate(10);
         }
         $title = ucwords(trans('customize.Documents')); /* 'Document Types' */
-        return View::make('list_document_types')
+        return View::make('dashboard.list_document_types')
                         ->with('title', $title)
                         ->with('page', 'document-type')
                         ->with('types', $types);
     }
 
     public function delete_document_type() {
-        $id = Request::segment(4);
-        Document::where('id', $id)->delete();
-        return Redirect::to("/admin/document-types");
+        $id = request()->segment(4);
+        \Enfa\Documents::where('id', $id)->delete();
+        return Redirect::to('/admin/document-types');
     }
 
     public function edit_document_type() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $document_type = Document::find($id);
+        $document_type = \Enfa\Documents::find($id);
 
         if ($document_type) {
             $id = $document_type->id;
@@ -588,7 +663,7 @@ class AdminController extends BaseController {
             $title = "Add Document Types";
         }
 
-        return View::make('edit_document_type')
+        return View::make('dashboard.edit_document_type')
                         ->with('title', $title)
                         ->with('page', 'document-type')
                         ->with('success', $success)
@@ -603,28 +678,28 @@ class AdminController extends BaseController {
         if ($id == 0) {
             $document_type = new Document;
         } else {
-            $document_type = Document::find($id);
+            $document_type = \Enfa\Documents::find($id);
         }
 
 
         $document_type->name = $name;
         $document_type->save();
 
-        return Redirect::to("/admin/document-type/edit/$document_type->id?success=1");
+        return Redirect::to('/admin/document-type/edit/$document_type->id?success=1');
     }
 
     public function get_provider_types() {
 
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         if ($unit == 0) {
             $unit_set = 'kms';
         } elseif ($unit == 1) {
             $unit_set = 'miles';
         }
-        $types = ProviderType::paginate(10);
+        $types = \Enfa\ProviderType::paginate(10);
         $title = ucwords(trans('customize.Provider') . " " . trans('customize.Types')); /* 'Provider Types' */
-        return View::make('list_provider_types')
+        return View::make('dashboard.list_provider_types')
                         ->with('title', $title)
                         ->with('page', 'provider-type')
                         ->with('unit_set', $unit_set)
@@ -637,11 +712,11 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'provid') {
-            $types = ProviderType::where('id', $valu)->paginate(10);
+            $types = \Enfa\ProviderType::where('id', $valu)->paginate(10);
         } elseif ($type == 'provname') {
-            $types = ProviderType::where('name', 'like', '%' . $valu . '%')->paginate(10);
+            $types = \Enfa\ProviderType::where('name', 'like', '%' . $valu . '%')->paginate(10);
         }
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         if ($unit == 0) {
             $unit_set = 'kms';
@@ -649,7 +724,7 @@ class AdminController extends BaseController {
             $unit_set = 'miles';
         }
         $title = ucwords(trans('customize.Provider') . " " . trans('customize.Types')); /* 'Provider Types' */
-        return View::make('list_provider_types')
+        return View::make('dashboard.list_provider_types')
                         ->with('title', $title)
                         ->with('page', 'provider-type')
                         ->with('unit_set', $unit_set)
@@ -657,16 +732,16 @@ class AdminController extends BaseController {
     }
 
     public function delete_provider_type() {
-        $id = Request::segment(4);
-        ProviderType::where('id', $id)->where('is_default', 0)->delete();
-        return Redirect::to("/admin/provider-types");
+        $id = request()->segment(4);
+        \Enfa\ProviderType::where('id', $id)->where('is_default', 0)->delete();
+        return Redirect::to('/admin/provider-types');
     }
 
     public function edit_provider_type() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $providers_type = ProviderType::find($id);
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $providers_type = \Enfa\ProviderType::find($id);
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         if ($unit == 0) {
             $unit_set = 'kms';
@@ -702,7 +777,7 @@ class AdminController extends BaseController {
             $title = "Add New Provider Type";
         }
 
-        return View::make('edit_provider_type')
+        return View::make('dashboard.edit_provider_type')
                         ->with('title', $title)
                         ->with('page', 'provider-type')
                         ->with('success', $success)
@@ -748,7 +823,7 @@ class AdminController extends BaseController {
 
         if ($is_default) {
             if ($is_default == 1) {
-                ProviderType::where('is_default', 1)->update(array('is_default' => 0));
+                \Enfa\ProviderType::where('is_default', 1)->update(array('is_default' => 0));
             }
         } else {
             $is_default = 0;
@@ -756,9 +831,9 @@ class AdminController extends BaseController {
 
 
         if ($id == 0) {
-            $providers_type = new ProviderType;
+            $providers_type = new \Enfa\ProviderType;
         } else {
-            $providers_type = ProviderType::find($id);
+            $providers_type = \Enfa\ProviderType::find($id);
         }
         if (Input::hasFile('icon')) {
             // Upload File
@@ -807,14 +882,14 @@ class AdminController extends BaseController {
         $providers_type->is_visible = $is_visible;
         $providers_type->save();
 
-        return Redirect::to("/admin/provider-type/edit/$providers_type->id?success=1");
+        return Redirect::to('/admin/provider-type/edit/$providers_type->id?success=1');
     }
 
     public function get_info_pages() {
 
-        $informations = Information::paginate(10);
+        $informations = \Enfa\Informations::paginate(10);
         $title = ucwords(trans('customize.Information') . " Pages"); /* 'Information Pages' */
-        return View::make('list_info_pages')
+        return View::make('dashboard.list_info_pages')
                         ->with('title', $title)
                         ->with('page', 'information')
                         ->with('informations', $informations);
@@ -826,32 +901,32 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'infoid') {
-            $informations = Information::where('id', $valu)->paginate(10);
+            $informations = \Enfa\Informations::where('id', $valu)->paginate(10);
         } elseif ($type == 'infotitle') {
-            $informations = Information::where('title', 'like', '%' . $valu . '%')->paginate(10);
+            $informations = \Enfa\Informations::where('title', 'like', '%' . $valu . '%')->paginate(10);
         }
         $title = ucwords(trans('customize.Information') . " Pages | Search Result"); /* 'Information Pages | Search Result' */
-        return View::make('list_info_pages')
+        return View::make('dashboard.list_info_pages')
                         ->with('title', $title)
                         ->with('page', 'information')
                         ->with('informations', $informations);
     }
 
     public function delete_info_page() {
-        $id = Request::segment(4);
-        Information::where('id', $id)->delete();
-        return Redirect::to("/admin/informations");
+        $id = request()->segment(4);
+        \Enfa\Informations::where('id', $id)->delete();
+        return Redirect::to('/admin/informations');
     }
 
     public function skipSetting() {
         setcookie("skipInstallation", "admincookie", time() + (86400 * 30));
-        return Redirect::to("/admin/report/");
+        return Redirect::to('/admin/report/');
     }
 
     public function edit_info_page() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $information = Information::find($id);
+        $information = \Enfa\Informations::find($id);
         if ($information) {
             $id = $information->id;
             $title = $information->title;
@@ -878,7 +953,7 @@ class AdminController extends BaseController {
             $icon = "";
             $page_title = "Add Information Page";
         }
-        return View::make('edit_info_page')
+        return View::make('dashboard.edit_info_page')
                         ->with('title', $page_title)
                         ->with('page', 'information')
                         ->with('success', $success)
@@ -895,7 +970,7 @@ class AdminController extends BaseController {
         if ($id == 0) {
             $information = new Information;
         } else {
-            $information = Information::find($id);
+            $information = \Enfa\Informations::find($id);
         }
 
         if (Input::hasFile('icon')) {
@@ -950,16 +1025,16 @@ class AdminController extends BaseController {
             fclose($fp);
         }
 
-        return Redirect::to("/admin/information/edit/$information->id?success=1");
+        return Redirect::to('/admin/information/edit/$information->id?success=1');
     }
 
     public function map_view() {
-        $settings = Settings::where('key', 'map_center_latitude')->first();
+        $settings = \Enfa\Settings::where('key', 'map_center_latitude')->first();
         $center_latitude = $settings->value;
-        $settings = Settings::where('key', 'map_center_longitude')->first();
+        $settings = \Enfa\Settings::where('key', 'map_center_longitude')->first();
         $center_longitude = $settings->value;
         $title = ucwords(trans('customize.map_view')); /* 'Map View' */
-        return View::make('map_view')
+        return View::make('dashboard.map_view')
                         ->with('title', $title)
                         ->with('page', 'map-view')
                         ->with('center_longitude', $center_longitude)
@@ -970,32 +1045,32 @@ class AdminController extends BaseController {
         Session::forget('type');
         Session::forget('valu');
         Session::forget('che');
-        //$query = "SELECT *,(select count(*) from request_meta where walker_id = walker.id  and status != 0 ) as total_requests,(select count(*) from request_meta where walker_id = walker.id and status=1) as accepted_requests FROM `walker`";
+        //$query = "SELECT *,(select count(*) from request_meta where walker_id = walkers.id  and status != 0 ) as total_requests,(select count(*) from request_meta where walker_id = walkers.id and status=1) as accepted_requests FROM `walker`";
         //$walkers = DB::select(DB::raw($query));
-        /* $walkers1 = DB::table('walker')
-          ->leftJoin('request_meta', 'walker.id', '=', 'request_meta.walker_id')
+        /* $walkers1 = DB::table('walkers')
+          ->leftJoin('request_meta', 'walkers.id', '=', 'request_meta.walker_id')
           ->where('request_meta.status', '!=', 0)
           ->count();
-          $walkers2 = DB::table('walker')
-          ->leftJoin('request_meta', 'walker.id', '=', 'request_meta.walker_id')
+          $walkers2 = DB::table('walkers')
+          ->leftJoin('request_meta', 'walkers.id', '=', 'request_meta.walker_id')
           ->where('request_meta.status', '=', 1)
           ->count();
 
-          $walkers = Walker::paginate(10); */
+          $walkers = \Enfa\Walkers::paginate(10); */
         $subQuery = DB::table('request_meta')
                 ->select(DB::raw('count(*)'))
-                ->whereRaw('walker_id = walker.id and status != 0');
+                ->whereRaw('walker_id = walkers.id and status != 0');
         $subQuery1 = DB::table('request_meta')
                 ->select(DB::raw('count(*)'))
-                ->whereRaw('walker_id = walker.id and status=1');
+                ->whereRaw('walker_id = walkers.id and status=1');
 
-        $walkers = DB::table('walker')
-                ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                /* ->where('walker.is_deleted', 0) */
-                ->orderBy('walker.created_at', 'DESC')
+        $walkers = DB::table('walkers')
+                ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                /* ->where('walkers.is_deleted', 0) */
+                ->orderBy('walkers.created_at', 'DESC')
                 ->paginate(10);
         $title = ucwords(trans('customize.Provider') . 's'); /* 'Providers' */
-        return View::make('walkers')
+        return View::make('dashboard.walkers')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('walkers', $walkers)/*
@@ -1005,11 +1080,11 @@ class AdminController extends BaseController {
 
     //Referral Statistics
     public function referral_details() {
-        $owner_id = Request::segment(4);
+        $owner_id = request()->segment(4);
         $ledger = Ledger::where('owner_id', $owner_id)->first();
-        $owners = Owner::where('referred_by', $owner_id)->paginate(10);
+        $owners = \Enfa\Owners::where('referred_by', $owner_id)->paginate(10);
         $title = ucwords(trans('customize.User') . 's' . " | Coupon Statistics"); /* 'Owner | Coupon Statistics' */
-        return View::make('referred')
+        return View::make('dashboard.referred')
                         ->with('page', 'owners')
                         ->with('title', $title)
                         ->with('owners', $owners)
@@ -1023,64 +1098,64 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'provid') {
-            /* $walkers = Walker::where('id', $valu)->paginate(10); */
+            /* $walkers = \Enfa\Walkers::where('id', $valu)->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $walkers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->where('walker.id', $valu)
+            $walkers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->where('walkers.id', $valu)
                     ->paginate(10);
         } elseif ($type == 'pvname') {
-            /* $walkers = Walker::where('first_name', 'like', '%' . $valu . '%')->orWhere('last_name', 'like', '%' . $valu . '%')->paginate(10); */
+            /* $walkers = \Enfa\Walkers::where('first_name', 'like', '%' . $valu . '%')->orWhere('last_name', 'like', '%' . $valu . '%')->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $walkers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->where('walker.first_name', 'like', '%' . $valu . '%')->orWhere('walker.last_name', 'like', '%' . $valu . '%')
+            $walkers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->where('walkers.first_name', 'like', '%' . $valu . '%')->orWhere('walkers.last_name', 'like', '%' . $valu . '%')
                     ->paginate(10);
         } elseif ($type == 'pvemail') {
-            /* $walkers = Walker::where('email', 'like', '%' . $valu . '%')->paginate(10); */
+            /* $walkers = \Enfa\Walkers::where('email', 'like', '%' . $valu . '%')->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $walkers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->where('walker.email', 'like', '%' . $valu . '%')
+            $walkers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->where('walkers.email', 'like', '%' . $valu . '%')
                     ->paginate(10);
         } elseif ($type == 'bio') {
-            /* $walkers = Walker::where('bio', 'like', '%' . $valu . '%')->paginate(10); */
+            /* $walkers = \Enfa\Walkers::where('bio', 'like', '%' . $valu . '%')->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $walkers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->where('walker.bio', 'like', '%' . $valu . '%')
+            $walkers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->where('walkers.bio', 'like', '%' . $valu . '%')
                     ->paginate(10);
         }
         $title = ucwords(trans('customize.Provider') . 's' . " | Search Result"); /* 'Providers | Search Result' */
-        return View::make('walkers')
+        return View::make('dashboard.walkers')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('walkers', $walkers);
@@ -1088,12 +1163,12 @@ class AdminController extends BaseController {
 
     public function walkers_xml() {
 
-        //$walkers = Walker::where('is_approved==1');
+        //$walkers = \Enfa\Walkers::where('is_approved==1');
         $response = "";
         $response .= '<markers>';
 
-        $walkers = DB::table('walker')
-                ->select('walker.*')
+        $walkers = DB::table('walkers')
+                ->select('walkers.*')
                 ->where('is_approved',1)
                 ->get();
         $walker_ids = array();
@@ -1155,11 +1230,11 @@ class AdminController extends BaseController {
         }
 
         /* // busy walkers
-          $walkers = DB::table('walker')
-          ->where('walker.is_active', 1)
-          ->where('walker.is_available', 0)
-          ->where('walker.is_approved', 1)
-          ->select('walker.id', 'walker.phone', 'walker.first_name', 'walker.last_name', 'walker.latitude', 'walker.longitude')
+          $walkers = DB::table('walkers')
+          ->where('walkers.is_active', 1)
+          ->where('walkers.is_available', 0)
+          ->where('walkers.is_approved', 1)
+          ->select('walkers.id', 'walkers.phone', 'walkers.first_name', 'walkers.last_name', 'walkers.latitude', 'walkers.longitude')
           ->get();
 
           $walker_ids = array();
@@ -1182,10 +1257,10 @@ class AdminController extends BaseController {
           $walker_ids = array_unique($walker_ids);
           $walker_ids_temp = implode(",", $walker_ids);
 
-          $walkers = DB::table('walker')
-          ->where('walker.is_active', 0)
-          ->where('walker.is_approved', 1)
-          ->select('walker.id', 'walker.phone', 'walker.first_name', 'walker.last_name', 'walker.latitude', 'walker.longitude')
+          $walkers = DB::table('walkers')
+          ->where('walkers.is_active', 0)
+          ->where('walkers.is_approved', 1)
+          ->select('walkers.id', 'walkers.phone', 'walkers.first_name', 'walkers.last_name', 'walkers.latitude', 'walkers.longitude')
           ->get();
           foreach ($walkers as $walker) {
           $response .= '<marker ';
@@ -1222,16 +1297,16 @@ class AdminController extends BaseController {
           $response .= '/>';
           } */
         $response .= '</markers>';
-        $content = View::make('walkers_xml')->with('response', $response);
+        $content = View::make('dashboard.walkers_xml')->with('response', $response);
         return Response::make($content, '200')->header('Content-Type', 'text/xml');
     }
 
     public function owners() {
         Session::forget('type');
         Session::forget('valu');
-        $owners = Owner::orderBy('id', 'DESC')->paginate(10);
+        $owners = \Enfa\Owners::orderBy('id', 'DESC')->paginate(10);
         $title = ucwords(trans('customize.User') . 's'); /* 'Owners' */
-        return View::make('owners')
+        return View::make('dashboard.owners')
                         ->with('title', $title)
                         ->with('page', 'owners')
                         ->with('owners', $owners);
@@ -1243,16 +1318,16 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'userid') {
-            $owners = Owner::where('id', $valu)->paginate(10);
+            $owners = \Enfa\Owners::where('id', $valu)->paginate(10);
         } elseif ($type == 'username') {
-            $owners = Owner::where('first_name', 'like', '%' . $valu . '%')->orWhere('last_name', 'like', '%' . $valu . '%')->paginate(10);
+            $owners = \Enfa\Owners::where('first_name', 'like', '%' . $valu . '%')->orWhere('last_name', 'like', '%' . $valu . '%')->paginate(10);
         } elseif ($type == 'useremail') {
-            $owners = Owner::where('email', 'like', '%' . $valu . '%')->paginate(10);
+            $owners = \Enfa\Owners::where('email', 'like', '%' . $valu . '%')->paginate(10);
         } elseif ($type == 'useraddress') {
-            $owners = Owner::where('address', 'like', '%' . $valu . '%')->orWhere('state', 'like', '%' . $valu . '%')->orWhere('country', 'like', '%' . $valu . '%')->paginate(10);
+            $owners = \Enfa\Owners::where('address', 'like', '%' . $valu . '%')->orWhere('state', 'like', '%' . $valu . '%')->orWhere('country', 'like', '%' . $valu . '%')->paginate(10);
         }
         $title = ucwords(trans('customize.User') . "s" . " | Search Result"); /* 'Owners | Search Result' */
-        return View::make('owners')
+        return View::make('dashboard.owners')
                         ->with('title', $title)
                         ->with('page', 'owners')
                         ->with('owners', $owners);
@@ -1261,16 +1336,16 @@ class AdminController extends BaseController {
     public function walks() {
         Session::forget('type');
         Session::forget('valu');
-        $walks = DB::table('request')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'walker.merchant_id as walker_merchant', 'request.id as id', 'request.created_at as date', 'request.payment_mode', 'request.is_started', 'request.is_walker_arrived', 'request.payment_mode', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                        , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.transfer_amount')
-                ->orderBy('request.created_at', 'DESC')
+        $walks = DB::table('requests')
+                ->leftJoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'walkers.merchant_id as walker_merchant', 'requests.id as id', 'requests.created_at as date', 'requests.payment_mode', 'requests.is_started', 'requests.is_walker_arrived', 'requests.payment_mode', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                        , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.transfer_amount')
+                ->orderBy('requests.created_at', 'DESC')
                 ->paginate(10);
-        $setting = Settings::where('key', 'paypal')->first();
+        $setting = \Enfa\Settings::where('key', 'paypal')->first();
         $title = ucwords(trans('customize.Request') . 's'); /* 'Requests' */
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'walks')
                         ->with('walks', $walks)
@@ -1284,36 +1359,36 @@ class AdminController extends BaseController {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'reqid') {
-            $walks = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.*', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                    ->where('request.id', $valu)
-                    ->orderBy('request.created_at')
+            $walks = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.*', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                    ->where('requests.id', $valu)
+                    ->orderBy('requests.created_at')
                     ->paginate(10);
         } elseif ($type == 'owner') {
-            $walks = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.*', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                    ->where('owner.first_name', 'like', '%' . $valu . '%')
-                    ->orWhere('owner.last_name', 'like', '%' . $valu . '%')
-                    ->orderBy('request.created_at')
+            $walks = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.*', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                    ->where('owners.first_name', 'like', '%' . $valu . '%')
+                    ->orWhere('owners.last_name', 'like', '%' . $valu . '%')
+                    ->orderBy('requests.created_at')
                     ->paginate(10);
         } elseif ($type == 'walker') {
-            $walks = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.*', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                    ->where('walker.first_name', 'like', '%' . $valu . '%')
-                    ->orWhere('walker.last_name', 'like', '%' . $valu . '%')
-                    ->orderBy('request.created_at')
+            $walks = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.*', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                    ->where('walkers.first_name', 'like', '%' . $valu . '%')
+                    ->orWhere('walkers.last_name', 'like', '%' . $valu . '%')
+                    ->orderBy('requests.created_at')
                     ->paginate(10);
         } elseif ($type == 'payment') {
             if ($valu == "Stored Cards" || $valu == "cards" || $valu == "Cards" || $valu == "Card") {
@@ -1324,20 +1399,20 @@ class AdminController extends BaseController {
                 $value = 2;
             }
 
-            $walks = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                    ->Where('request.payment_mode', $value)
-                    ->orderBy('request.created_at')
+            $walks = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                    ->Where('requests.payment_mode', $value)
+                    ->orderBy('requests.created_at')
                     ->paginate(10);
         }
 
-        $setting = Settings::where('key', 'paypal')->first();
+        $setting = \Enfa\Settings::where('key', 'paypal')->first();
         $title = ucwords(trans('customize.Request') . 's' . " | Search Result"); /* 'Requests | Search Result' */
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'walks')
                         ->with('setting', $setting)
@@ -1349,20 +1424,20 @@ class AdminController extends BaseController {
         Session::forget('type');
         Session::forget('valu');
         $provider_reviews = DB::table('review_walker')
-                ->leftJoin('walker', 'review_walker.walker_id', '=', 'walker.id')
-                ->leftJoin('owner', 'review_walker.owner_id', '=', 'owner.id')
-                ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_walker.created_at')
+                ->leftJoin('walkers', 'review_walker.walker_id', '=', 'walkers.id')
+                ->leftJoin('owners', 'review_walker.owner_id', '=', 'owners.id')
+                ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_walker.created_at')
                 ->orderBy('review_walker.id', 'DESC')
                 ->paginate(10);
 
         $user_reviews = DB::table('review_dog')
-                ->leftJoin('walker', 'review_dog.walker_id', '=', 'walker.id')
-                ->leftJoin('owner', 'review_dog.owner_id', '=', 'owner.id')
-                ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_dog.created_at')
+                ->leftJoin('walkers', 'review_dog.walker_id', '=', 'walkers.id')
+                ->leftJoin('owners', 'review_dog.owner_id', '=', 'owners.id')
+                ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_dog.created_at')
                 ->orderBy('review_dog.id', 'DESC')
                 ->paginate(10);
         $title = ucwords(trans('customize.Reviews')); /* 'Reviews' */
-        return View::make('reviews')
+        return View::make('dashboard.reviews')
                         ->with('title', $title)
                         ->with('page', 'reviews')
                         ->with('provider_reviews', $provider_reviews)
@@ -1377,35 +1452,35 @@ class AdminController extends BaseController {
         Session::put('type', $type);
         if ($type == 'owner') {
             $provider_reviews = DB::table('review_walker')
-                    ->leftJoin('walker', 'review_walker.walker_id', '=', 'walker.id')
-                    ->leftJoin('owner', 'review_walker.owner_id', '=', 'owner.id')
-                    ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_walker.created_at')
-                    ->where('owner.first_name', 'like', '%' . $valu . '%')->orWhere('owner.last_name', 'like', '%' . $valu . '%')
+                    ->leftjoin('walkers', 'review_walker.walker_id', '=', 'walkers.id')
+                    ->leftjoin('owners', 'review_walker.owner_id', '=', 'owners.id')
+                    ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_walker.created_at')
+                    ->where('owners.first_name', 'like', '%' . $valu . '%')->orWhere('owners.last_name', 'like', '%' . $valu . '%')
                     ->paginate(10);
 
             $reviews = DB::table('review_dog')
-                    ->leftJoin('walker', 'review_dog.walker_id', '=', 'walker.id')
-                    ->leftJoin('owner', 'review_dog.owner_id', '=', 'owner.id')
-                    ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_dog.created_at')
-                    ->where('owner.first_name', 'like', '%' . $valu . '%')->orWhere('owner.last_name', 'like', '%' . $valu . '%')
+                    ->leftjoin('walkers', 'review_dog.walker_id', '=', 'walkers.id')
+                    ->leftjoin('owners', 'review_dog.owner_id', '=', 'owners.id')
+                    ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_dog.created_at')
+                    ->where('owners.first_name', 'like', '%' . $valu . '%')->orWhere('owners.last_name', 'like', '%' . $valu . '%')
                     ->paginate(10);
         } elseif ($type == 'walker') {
             $provider_reviews = DB::table('review_walker')
-                    ->leftJoin('walker', 'review_walker.walker_id', '=', 'walker.id')
-                    ->leftJoin('owner', 'review_walker.owner_id', '=', 'owner.id')
-                    ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_walker.created_at')
-                    ->where('walker.first_name', 'like', '%' . $valu . '%')->orWhere('walker.last_name', 'like', '%' . $valu . '%')
+                    ->leftjoin('walkers', 'review_walker.walker_id', '=', 'walkers.id')
+                    ->leftjoin('owners', 'review_walker.owner_id', '=', 'owners.id')
+                    ->select('review_walker.id as review_id', 'review_walker.rating', 'review_walker.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_walker.created_at')
+                    ->where('walkers.first_name', 'like', '%' . $valu . '%')->orWhere('walkers.last_name', 'like', '%' . $valu . '%')
                     ->paginate(10);
 
             $reviews = DB::table('review_dog')
-                    ->leftJoin('walker', 'review_dog.walker_id', '=', 'walker.id')
-                    ->leftJoin('owner', 'review_dog.owner_id', '=', 'owner.id')
-                    ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'review_dog.created_at')
-                    ->where('walker.first_name', 'like', '%' . $valu . '%')->orWhere('walker.last_name', 'like', '%' . $valu . '%')
+                    ->leftjoin('walkers', 'review_dog.walker_id', '=', 'walkers.id')
+                    ->leftjoin('owners', 'review_dog.owner_id', '=', 'owners.id')
+                    ->select('review_dog.id as review_id', 'review_dog.rating', 'review_dog.comment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'review_dog.created_at')
+                    ->where('walkers.first_name', 'like', '%' . $valu . '%')->orWhere('walkers.last_name', 'like', '%' . $valu . '%')
                     ->paginate(10);
         }
         $title = ucwords(trans('customize.Reviews') . " | Search Result"); /* 'Reviews | Search Result' */
-        return View::make('reviews')
+        return View::make('dashboard.reviews')
                         ->with('title', $title)
                         ->with('page', 'reviews')
                         ->with('provider_reviews', $provider_reviews)
@@ -1419,24 +1494,24 @@ class AdminController extends BaseController {
         $type = Input::get('type');
         $q = Input::get('q');
         if ($type == 'user') {
-            $owners = Owner::where('first_name', 'like', '%' . $q . '%')
+            $owners = \Enfa\Owners::where('first_name', 'like', '%' . $q . '%')
                     ->where('deleted_at', NULL)
                     ->orWhere('last_name', 'like', '%' . $q . '%')
                     ->paginate(10);
             $title = ucwords(trans('customize.User') . 's'); /* 'Users' */
-            return View::make('owners')
+            return View::make('dashboard.owners')
                             ->with('title', $title)
                             ->with('page', 'owners')
                             ->with('owners', $owners);
         } else {
 
-            $walkers = Walker::where('deleted_at', NULL)
+            $walkers = \Enfa\Walkers::where('deleted_at', NULL)
                     ->where('deleted_at', NULL)
                     ->where('first_name', 'like', '%' . $q . '%')
                     ->orWhere('last_name', 'like', '%' . $q . '%')
                     ->paginate(10);
             $title = ucwords(trans('customize.Provider') . 's'); /* 'Providers' */
-            return View::make('walkers')
+            return View::make('dashboard.walkers')
                             ->with('title', $title)
                             ->with('page', 'walkers')
                             ->with('walkers', $walkers);
@@ -1449,50 +1524,79 @@ class AdminController extends BaseController {
     }
 
     public function verify() {
+        $this->middleware('auth');
         $username = Input::get('username');
         $password = Input::get('password');
-        if (!Admin::count()) {
-            $user = new Admin;
+
+        $count = DB::table('admins')->count();
+
+        $user= \Enfa\Admin::where('username', 'like', '%' . $username . '%')->first();
+
+        echo $user_id = $user->id;
+        echo $username=$user->username;
+        echo $count;
+        @csrf;
+
+//pendiente validar
+/*
+        if (!$count)  {
+            $user = new \Enfa\Admin;
             $user->username = Input::get('username');
             $user->password = $user->password = Hash::make(Input::get('password'));
             $user->save();
-            return Redirect::to('/admin/login');
+            return Redirect::to('/admin/login?error=10');
         } else {
             if (Auth::attempt(array('username' => $username, 'password' => $password))) {
-                if (Session::has('pre_admin_login_url')) {
+                if (\Session::has('pre_admin_login_url')) {
                     $url = Session::get('pre_admin_login_url');
-                    Session::forget('pre_admin_login_url');
-                    return Redirect::to($url);
+                    \Session::forget('pre_admin_login_url');
+                    //return response (Redirect::to($url));
+                    return response (Redirect::to('/admin/login?error=11'));
                 } else {
-                    $admin = Admin::where('username', 'like', '%' . $username . '%')->first();
-                    Session::put('admin_id', $admin->id);
-                    return Redirect::to('/admin/report')->with('notify', 'installation Notification');
+                    $admin = \Enfa\Admin::where('username', 'like', '%' . $username . '%')->first();
+                    \Session::put('admin_id', $admin->id);
+                    //handle(Redirect::to('/admin/report')->with('notify', 'installation Notification'), Session);
+                      //return response (handle(Redirect::to('/admin/report')->with('notify', 'en 12'), Session));
+                      //return response($admin);
+                      return response (Redirect::to('/admin/login?error=13'));
                 }
             } else {
-                return Redirect::to('/admin/login?error=1');
+                return response(Redirect::to('/admin/login?error=13'));
             }
         }
+*/
+    }
+
+    public function authenticated() {
+      //logear Admin
+      return redirects ('admin/report');
+    }
+
+    public function secret() {
+      //metodo secret, para administradores
+      return 'Hola '. auth('admins')->user()->name."bienvenido";
+
     }
 
     public function login() {
         $error = Input::get('error');
-        if (Admin::count()) {
+        if (\Enfa\Admin::count()) {
 
-            return View::make('login')->with('title', 'Login')->with('button', 'Login')->with('error', $error);
+            return View::make('dashboard.auth.loginAdmin')->with('title', 'Login')->with('button', 'Login')->with('error', $error);
         } else {
-            return View::make('login')->with('title', 'Create Admin')->with('button', 'Create')->with('error', $error);
+            return View::make('dashboard.auth.loginAdmin')->with('title', 'Create Admin')->with('button', 'Create')->with('error', $error);
         }
     }
 
     public function edit_walker() {
-        $id = Request::segment(4);
-        $type = ProviderType::where('is_visible', '=', 1)->get();
-        $provserv = ProviderServices::where('provider_id', $id)->get();
+        $id = request()->segment(4);
+        $type = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+        $provserv = \Enfa\ProviderServices::where('provider_id', $id)->get();
         $success = Input::get('success');
-        $walker = Walker::find($id);
+        $walker = \Enfa\Walkers::find($id);
         if ($walker) {
             $title = ucwords("Edit " . trans('customize.Provider') . " : " . $walker->first_name . " " . $walker->last_name); /* 'Edit Provider' */
-            return View::make('edit_walker')
+            return View::make('dashboard.edit_walker')
                             ->with('title', $title)
                             ->with('page', 'walkers')
                             ->with('success', $success)
@@ -1500,18 +1604,18 @@ class AdminController extends BaseController {
                             ->with('ps', $provserv)
                             ->with('walker', $walker);
         } else {
-            return View::make('notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
     public function provider_availabilty() {
-        $id = Request::segment(5);
-        $type = ProviderType::where('is_visible', '=', 1)->get();
-        $provserv = ProviderServices::where('provider_id', $id)->get();
+        $id = request()->segment(5);
+        $type = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+        $provserv = \Enfa\ProviderServices::where('provider_id', $id)->get();
         $success = Input::get('success');
-        $walker = Walker::find($id);
+        $walker = \Enfa\Walkers::find($id);
         $title = ucwords("Edit " . trans('customize.Provider') . " : Availability"); /* 'Edit Provider Availability' */
-        return View::make('edit_walker_availability')
+        return View::make('dashboard.edit_walker_availability')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('success', $success)
@@ -1522,51 +1626,51 @@ class AdminController extends BaseController {
 
     public function add_walker() {
         $title = ucwords("Add " . trans('customize.Provider')); /* 'Add Provider' */
-        return View::make('add_walker')
+        return View::make('dashboard.add_walker')
                         ->with('title', $title)
                         ->with('page', 'walkers');
     }
 
     public function add_promo_code() {
         $title = ucwords("Add " . trans('customize.promo_codes')); /* 'Add Promo Code' */
-        return View::make('add_promo_code')
+        return View::make('dashboard.add_promo_code')
                         ->with('title', $title)
                         ->with('page', 'promo_code');
     }
 
     public function edit_promo_code() {
-        $id = Request::segment(4);
-        $promo_code = PromoCodes::where('id', $id)->first();
+        $id = request()->segment(4);
+        $promo_code = \Enfa\PromoCodes::where('id', $id)->first();
         $title = ucwords("Edit " . trans('customize.promo_codes')); /* 'Edit Promo Code' */
-        return View::make('edit_promo_code')
+        return View::make('dashboard.edit_promo_code')
                         ->with('title', $title)
                         ->with('page', 'promo_code')
                         ->with('promo_code', $promo_code);
     }
 
     public function deactivate_promo_code() {
-        $id = Request::segment(4);
-        $promo_code = PromoCodes::where('id', $id)->first();
+        $id = request()->segment(4);
+        $promo_code = \Enfa\PromoCodes::where('id', $id)->first();
         $promo_code->state = 2;
         $promo_code->save();
         return Redirect::route('AdminPromoCodes');
     }
 
     public function activate_promo_code() {
-        $id = Request::segment(4);
-        $promo_code = PromoCodes::where('id', $id)->first();
+        $id = request()->segment(4);
+        $promo_code = \Enfa\PromoCodes::where('id', $id)->first();
         $promo_code->state = 1;
         $promo_code->save();
         return Redirect::route('AdminPromoCodes');
     }
 
     public function update_promo_code() {
-        $check = PromoCodes::where('coupon_code', '=', Input::get('code_name'))->where('id', '!=', Input::get('id'))->count();
+        $check = \Enfa\PromoCodes::where('coupon_code', '=', Input::get('code_name'))->where('id', '!=', Input::get('id'))->count();
         if ($check > 0) {
-            return Redirect::to("admin/promo_code?success=1");
+            return Redirect::to('admin/promo_code?success=1');
         }
         if (Input::get('id') != 0) {
-            $promo = PromoCodes::find(Input::get('id'));
+            $promo = \Enfa\PromoCodes::find(Input::get('id'));
         } else {
             $promo = new PromoCodes;
         }
@@ -1600,7 +1704,7 @@ class AdminController extends BaseController {
             $error_messages = $validator->messages()->first();
             Session::put('msg', $error_messages);
             $title = ucwords("Add " . trans('customize.promo_codes')); /* 'Add Promo Code' */
-            return View::make('add_promo_code')
+            return View::make('dashboard.add_promo_code')
                             ->with('title', $title)
                             ->with('page', 'promo_codes');
         } else {
@@ -1614,34 +1718,36 @@ class AdminController extends BaseController {
             $promo->expiry = $expirydate;
             $promo->state = 1;
             $promo->save();
+            return Redirect::route('AdminPromoCodes');
+
         }
-        return Redirect::route('AdminPromoCodes');
+        return redirect($url)->with('success', 'Data saved successfully!');
     }
 
     public function update_walker() {
 
         if (Input::get('id') != 0) {
-            $walker = Walker::find(Input::get('id'));
+            $walker = \Enfa\Walkers::find(Input::get('id'));
         } else {
 
-            $findWalker = Walker::where('email', Input::get('email'))->first();
+            $findWalker = \Enfa\Walkers::where('email', Input::get('email'))->first();
 
             if ($findWalker) {
                 Session::put('new_walker', 0);
                 $error_messages = "This Email Id is already registered.";
                 Session::put('msg', $error_messages);
                 $title = ucwords("Add" . trans('customize.Provider')); /* 'Add Provider' */
-                return View::make('add_walker')
+                return View::make('dashboard.add_walker')
                                 ->with('title', $title)
                                 ->with('page', 'walkers');
             } else {
                 Session::put('new_walker', 1);
-                $walker = new Walker;
+                $walker = new \Enfa\Walkers;
             }
         }
         if (Input::has('service') != NULL) {
             foreach (Input::get('service') as $key) {
-                $serv = ProviderType::where('id', $key)->first();
+                $serv = \Enfa\ProviderType::where('id', $key)->first();
                 $pserv[] = $serv->name;
             }
         }
@@ -1682,7 +1788,7 @@ class AdminController extends BaseController {
             $error_messages = $validator->messages()->first();
             Session::put('msg', $error_messages);
             $title = ucwords("Add" . trans('customize.Provider')); /* 'Add Provider' */
-            return View::make('add_walker')
+            return View::make('dashboard.add_walker')
                             ->with('title', $title)
                             ->with('page', 'walkers');
         } else {
@@ -1767,7 +1873,7 @@ class AdminController extends BaseController {
 
             if (Session::get('new_walker') == 1) {
                 // send email
-                $settings = Settings::where('key', 'email_forgot_password')->first();
+                $settings = \Enfa\Settings::where('key', 'email_forgot_password')->first();
                 $pattern = $settings->value;
                 $pattern = "Hi, " . Config::get('app.website_title') . " is Created a New Account for you , Your Username is:" . Input::get('email') . " and Your Password is " . $new_password . ". Please dont forget to change the password once you log in next time.";
                 $subject = "Bienvenido a bordo";
@@ -1776,9 +1882,9 @@ class AdminController extends BaseController {
 
             if (Input::has('service') != NULL) {
                 foreach (Input::get('service') as $ke) {
-                    $proviserv = ProviderServices::where('provider_id', $walker->id)->first();
+                    $proviserv = \Enfa\ProviderServices::where('provider_id', $walker->id)->first();
                     if ($proviserv != NULL) {
-                        DB::delete("delete from walker_services where provider_id = '" . $walker->id . "';");
+                        DB::delete("delete from provider_services where provider_id = '" . $walker->id . "';");
                     }
                 }
                 $base_price = Input::get('service_base_price');
@@ -1790,7 +1896,7 @@ class AdminController extends BaseController {
                 Log::info('cnkey = ' . print_r($cnkey, true));
                 /* for ($i = 1; $i <= $cnkey; $i++) { */
                 /* foreach (Input::get('service') as $key) { */
-                $prserv = new ProviderServices;
+                $prserv = new \Enfa\ProviderServices;
                 $prserv->provider_id = $walker->id;
                 $prserv->type = $type_id;
                 $walker->type = $type_id;
@@ -1816,14 +1922,14 @@ class AdminController extends BaseController {
                 /* } */
             }
 
-            return Redirect::to("/admin/providers");
+            return Redirect::to('/admin/providers');
         }
     }
 
     public function approve_walker() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $walker = Walker::find($id);
+        $walker = \Enfa\Walkers::find($id);
         $walker->is_approved = 1;
 
         $txt_approve = "Decline";
@@ -1857,16 +1963,16 @@ class AdminController extends BaseController {
         $message = $response_array;
         send_notifications($id, "walker", $title, $message, "imp");
         /* SMS */
-        $settings = Settings::where('key', 'sms_walker_approve')->first();
+        $settings = \Enfa\Settings::where('key', 'sms_walker_approve')->first();
         $pattern = $settings->value;
         $pattern = str_replace('%name%', $walker->first_name . " " . $walker->last_name, $pattern);
         sms_notification($id, 'walker', $pattern);
         /* SMS END */
         /* EMAIL */
-        /* $settings = Settings::where('key', 'email_walker_approve')->first();
+        /* $settings = \Enfa\Settings::where('key', 'email_walker_approve')->first();
           $pattern = $settings->value;
           $pattern = str_replace('%name%', $walker->first_name . " " . $walker->last_name, $pattern); */
-        $settings = Settings::where('key', 'admin_email_address')->first();
+        $settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
         $admin_email = $settings->value;
         $pattern = array('walker_name' => $walker->first_name . " " . $walker->last_name, 'admin_eamil' => $admin_email);
         $subject = "Bienvienido " . $walker->first_name . " " . $walker->last_name . " a " . Config::get('app.website_title') . "";
@@ -1876,13 +1982,13 @@ class AdminController extends BaseController {
         /*  $pattern = "Hi " . $walker->first_name . ", Your Documents are verified by the Admin and your account is Activated, Please Login to Continue";
           $subject = "Your Account Activated";
           email_notification($walker->id, 'walker', $pattern, $subject); */
-        return Redirect::to("/admin/providers");
+        return Redirect::to('/admin/providers');
     }
 
     public function decline_walker() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $walker = Walker::find($id);
+        $walker = \Enfa\Walkers::find($id);
         $walker->is_approved = 0;
         $txt_approve = "Decline";
         if ($walker->is_approved) {
@@ -1915,16 +2021,16 @@ class AdminController extends BaseController {
         $message = $response_array;
         send_notifications($id, "walker", $title, $message, "imp");
         /* SMS */
-        $settings = Settings::where('key', 'sms_walker_decline')->first();
+        $settings = \Enfa\Settings::where('key', 'sms_walker_decline')->first();
         $pattern = $settings->value;
         $pattern = str_replace('%name%', $walker->first_name . " " . $walker->last_name, $pattern);
         sms_notification($id, 'walker', $pattern);
         /* SMS END */
         /* EMAIL */
-        /* $settings = Settings::where('key', 'email_walker_decline')->first();
+        /* $settings = \Enfa\Settings::where('key', 'email_walker_decline')->first();
           $pattern = $settings->value;
           $pattern = str_replace('%name%', $walker->first_name . " " . $walker->last_name, $pattern); */
-        $settings = Settings::where('key', 'admin_email_address')->first();
+        $settings = \Enfa\Settings::where('key', 'admin_email_address')->first();
         $admin_email = $settings->value;
         $pattern = array('walker_name' => $walker->first_name . " " . $walker->last_name, 'admin_eamil' => $admin_email);
         $subject = "Bienvienido " . $walker->first_name . " " . $walker->last_name . " a " . Config::get('app.website_title') . "";
@@ -1934,41 +2040,41 @@ class AdminController extends BaseController {
         /* $pattern = "Hi " . $walker->first_name . ", Your account is deactivated, Please contact admin to Continue";
           $subject = "Your Account Deactivated";
           email_notification($walker->id, 'walker', $pattern, $subject); */
-        return Redirect::to("/admin/providers");
+        return Redirect::to('/admin/providers');
     }
 
     public function delete_walker() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
         RequestMeta::where('walker_id', $id)->delete();
-        Walker::where('id', $id)->delete();
-        return Redirect::to("/admin/providers");
+        \Enfa\Walkers::where('id', $id)->delete();
+        return Redirect::to('/admin/providers');
     }
 
     public function delete_owner() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        Owner::where('id', $id)->delete();
-        return Redirect::to("/admin/users");
+        \Enfa\Owners::where('id', $id)->delete();
+        return Redirect::to('/admin/users');
     }
 
     public function walker_history() {
-        $walker_id = Request::segment(4);
-        $walks = DB::table('request')
-                ->where('request.confirmed_walker', $walker_id)
-                ->where('request.is_completed', 1)
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker', 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                ->orderBy('request.created_at')
+        $walker_id = request()->segment(4);
+        $walks = DB::table('requests')
+                ->where('requests.confirmed_walker', $walker_id)
+                ->where('requests.is_completed', 1)
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker', 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                ->orderBy('requests.created_at')
                 ->paginate(10);
         $title = ucwords(trans('customize.Provider') . " History"); /* 'Trip History' */
         foreach ($walks as $walk) {
             $title = ucwords(trans('customize.Provider') . ' History' . " : " . $walk->walker_first_name . " " . $walk->walker_last_name);
         }
-        $setting = Settings::where('key', 'transfer')->first();
+        $setting = \Enfa\Settings::where('key', 'transfer')->first();
 
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('setting', $setting)
@@ -1976,13 +2082,13 @@ class AdminController extends BaseController {
     }
 
     public function walker_documents() {
-        $walker_id = Request::segment(4);
-        $walker = Walker::find($walker_id);
-        $documents = Document::all();
-        $walker_document = WalkerDocument::where('walker_id', $walker_id)->get();
+        $walker_id = request()->segment(4);
+        $walker = \Enfa\Walkers::find($walker_id);
+        $documents = \Enfa\Documents::all();
+        $walker_document = Walker\Enfa\Documents::where('walker_id', $walker_id)->get();
 
 
-        return View::make('walker_document_list')
+        return View::make('dashboard.walker_document_list')
                         ->with('title', 'Driver Documents')
                         ->with('page', 'walkers')
                         ->with('walker', $walker)
@@ -1991,45 +2097,45 @@ class AdminController extends BaseController {
     }
 
     public function walker_upcoming_walks() {
-        $walker_id = Request::segment(4);
-        $walks = DB::table('request')
-                ->where('request.walker_id', $walker_id)
-                ->where('request.is_completed', 0)
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker', 'request.status', 'request.time', 'request.distance', 'request.total')
-                ->orderBy('request.created_at')
+        $walker_id = request()->segment(4);
+        $walks = DB::table('requests')
+                ->where('requests.walker_id', $walker_id)
+                ->where('requests.is_completed', 0)
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker', 'requests.status', 'requests.time', 'requests.distance', 'requests.total')
+                ->orderBy('requests.created_at')
                 ->paginate(10);
         $title = ucwords(trans('customize.Provider') . " Upcoming " . trans('customize.Request') . 's'); /* 'Upcoming Walks' */
         foreach ($walks as $walk) {
             $title = ucwords(trans('customize.Provider') . " Upcoming " . trans('customize.Request') . 's' . " : " . $walk->walker_first_name . " " . $walk->walker_last_name);
         }
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('walks', $walks);
     }
 
     public function edit_owner() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $success = Input::get('success');
-        $owner = Owner::find($id);
+        $owner = \Enfa\Owners::find($id);
         if ($owner) {
             $title = ucwords("Edit " . trans('customize.User') . " : " . $owner->first_name . " " . $owner->last_name); /* 'Edit User' */
-            return View::make('edit_owner')
+            return View::make('dashboard.edit_owner')
                             ->with('title', $title)
                             ->with('page', 'owners')
                             ->with('success', $success)
                             ->with('owner', $owner);
         } else {
-            return View::make('notfound')
+            return View::make('administrators.notfound')
                             ->with('title', 'Error Page Not Found')
                             ->with('page', 'Error Page Not Found');
         }
     }
 
     public function update_owner() {
-        $owner = Owner::find(Input::get('id'));
+        $owner = \Enfa\Owners::find(Input::get('id'));
         $owner->first_name = Input::get('first_name');
         $owner->last_name = Input::get('last_name');
         $owner->email = Input::get('email');
@@ -2038,27 +2144,27 @@ class AdminController extends BaseController {
         $owner->state = Input::get('state');
         $owner->zipcode = Input::get('zipcode');
         $owner->save();
-        return Redirect::to("/admin/user/edit/$owner->id?success=1");
+        return Redirect::to('/admin/user/edit/$owner->id?success=1');
     }
 
     public function owner_history() {
-        $setting = Settings::where('key', 'transfer')->first();
-        $owner_id = Request::segment(4);
-        $owner = Owner::find($owner_id);
-        $walks = DB::table('request')
-                ->where('request.owner_id', $owner->id)
-                ->where('request.is_completed', 1)
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker', 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.payment_mode')
-                ->orderBy('request.created_at')
+        $setting = \Enfa\Settings::where('key', 'transfer')->first();
+        $owner_id = request()->segment(4);
+        $owner = \Enfa\Owners::find($owner_id);
+        $walks = DB::table('requests')
+                ->where('requests.owner_id', $owner->id)
+                ->where('requests.is_completed', 1)
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker', 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.payment_mode')
+                ->orderBy('requests.created_at')
                 ->paginate(10);
         $title = ucwords(trans('customize.Provider') . " History"); /* 'Trip History' */
         foreach ($walks as $walk) {
             $title = ucwords(trans('customize.User') . ' History' . " : " . $walk->owner_first_name . " " . $walk->owner_last_name);
         }
 
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'owners')
                         ->with('setting', $setting)
@@ -2066,59 +2172,59 @@ class AdminController extends BaseController {
     }
 
     public function owner_upcoming_walks() {
-        $owner_id = Request::segment(4);
-        $owner = Owner::find($owner_id);
-        $walks = DB::table('request')
-                ->where('request.owner_id', $owner->id)
-                ->where('request.is_completed', 0)
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker', 'request.status', 'request.time', 'request.distance', 'request.total')
-                ->orderBy('request.created_at')
+        $owner_id = request()->segment(4);
+        $owner = \Enfa\Owners::find($owner_id);
+        $walks = DB::table('requests')
+                ->where('requests.owner_id', $owner->id)
+                ->where('requests.is_completed', 0)
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker', 'requests.status', 'requests.time', 'requests.distance', 'requests.total')
+                ->orderBy('requests.created_at')
                 ->paginate(10);
         $title = ucwords(trans('customize.User') . " Upcoming " . trans('customize.Request') . 's'); /* 'Upcoming Walks' */
         foreach ($walks as $walk) {
             $title = ucwords(trans('customize.User') . " Upcoming " . trans('customize.Request') . 's' . " : " . $walk->owner_first_name . " " . $walk->owner_last_name);
         }
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'owners')
                         ->with('walks', $walks);
     }
 
     public function delete_review() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $walker = WalkerReview::where('id', $id)->delete();
-        return Redirect::to("/admin/reviews");
+        return Redirect::to('/admin/reviews');
     }
 
     public function delete_review_owner() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $walker = DogReview::where('id', $id)->delete();
-        return Redirect::to("/admin/reviews");
+        return Redirect::to('/admin/reviews');
     }
 
     public function approve_walk() {
-        $id = Request::segment(4);
-        $walk = Walk::find($id);
+        $id = request()->segment(4);
+        $walk = \Enfa\Walk::find($id);
         $walk->is_confirmed = 1;
         $walk->save();
-        return Redirect::to("/admin/walks");
+        return Redirect::to('/admin/walks');
     }
 
     public function decline_walk() {
-        $id = Request::segment(4);
-        $walk = Walk::find($id);
+        $id = request()->segment(4);
+        $walk = \Enfa\Walk::find($id);
         $walk->is_confirmed = 0;
         $walk->save();
-        return Redirect::to("/admin/walks");
+        return Redirect::to('/admin/walks');
     }
 
     public function view_map() {
-        $id = Request::segment(4);
-        $request = Requests::find($id);
-        $walker = Walker::where('id', $request->confirmed_walker)->first();
-        $owner = Owner::where('id', $request->owner_id)->first();
+        $id = request()->segment(4);
+        $request = \Enfa\Requests::find($id);
+        $walker = \Enfa\Walkers::where('id', $request->confirmed_walker)->first();
+        $owner = \Enfa\Owners::where('id', $request->owner_id)->first();
         if ($request->is_paid) {
             $status = "Payment Done";
         } elseif ($request->is_completed) {
@@ -2185,7 +2291,7 @@ class AdminController extends BaseController {
 
         $request_meta = DB::table('request_meta')
                 ->where('request_id', $id)
-                ->leftJoin('walker', 'request_meta.walker_id', '=', 'walker.id')
+                ->leftjoin('walkers', 'request_meta.walker_id', '=', 'walkers.id')
                 ->paginate(10);
 
         if ($walker) {
@@ -2198,7 +2304,7 @@ class AdminController extends BaseController {
 
         if ($request->confirmed_walker) {
             $title = ucwords('Maps');
-            return View::make('walk_map')
+            return View::make('dashboard.walk_map')
                             ->with('title', $title)
                             ->with('page', 'walks')
                             ->with('walk_id', $id)
@@ -2222,7 +2328,7 @@ class AdminController extends BaseController {
                             ->with('request_meta', $request_meta);
         } else {
             $title = ucwords('Maps');
-            return View::make('walk_map')
+            return View::make('dashboard.walk_map')
                             ->with('title', $title)
                             ->with('page', 'walks')
                             ->with('walk_id', $id)
@@ -2248,21 +2354,21 @@ class AdminController extends BaseController {
     }
 
     public function change_walker() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $title = ucwords('Map View');
-        return View::make('reassign_walker')
+        return View::make('dashboard.reassign_walker')
                         ->with('title', $title)
                         ->with('page', 'walks')
                         ->with('walk_id', $id);
     }
 
     public function alternative_walkers_xml() {
-        $id = Request::segment(4);
-        $walk = Walk::find($id);
+        $id = request()->segment(4);
+        $walk = \Enfa\Walk::find($id);
         $schedule = Schedules::find($walk->schedule_id);
         $dog = Dog::find($walk->dog_id);
-        $owner = Owner::find($dog->owner_id);
-        $current_walker = Walker::find($walk->walker_id);
+        $owner = \Enfa\Owners::find($dog->owner_id);
+        $current_walker = \Enfa\Walkers::find($walk->walker_id);
         $latitude = $owner->latitude;
         $longitude = $owner->longitude;
         $distance = 5;
@@ -2287,7 +2393,7 @@ class AdminController extends BaseController {
         $start_time = date('H:i:s', strtotime($schedule->start_time) - (60 * 60));
         $end_time = date('H:i:s', strtotime($schedule->end_time) + (60 * 60));
         $days_str = implode(',', $days);
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         if ($unit == 0) {
             $multiply = 1.609344;
@@ -2295,7 +2401,7 @@ class AdminController extends BaseController {
             $multiply = 1;
         }
 
-        $query = "SELECT walker.id,walker.bio,walker.first_name,walker.last_name,walker.phone,walker.latitude,walker.longitude from walker where id NOT IN ( SELECT distinct schedules.walker_id FROM `schedule_meta` left join schedules on schedule_meta.schedule_id = schedules.id where schedules.is_confirmed	 != 0 and schedule_meta.day IN ($days_str) and schedule_meta.ends_on >= '$date' and schedule_meta.started_on <= '$date' and ((schedules.start_time > '$start_time' and schedules.start_time < '$end_time') OR ( schedules.end_time > '$start_time' and schedules.end_time < '$end_time' )) ) and "
+        $query = "SELECT walkers.id,walker.bio,walker.first_name,walker.last_name,walker.phone,walker.latitude,walker.longitude from walker where id NOT IN ( SELECT distinct schedules.walker_id FROM `schedule_meta` left join schedules on schedule_meta.schedule_id = schedules.id where schedules.is_confirmed	 != 0 and schedule_meta.day IN ($days_str) and schedule_meta.ends_on >= '$date' and schedule_meta.started_on <= '$date' and ((schedules.start_time > '$start_time' and schedules.start_time < '$end_time') OR ( schedules.end_time > '$start_time' and schedules.end_time < '$end_time' )) ) and "
                 . "ROUND((" . $multiply . " * 3956 * acos( cos( radians('$latitude') ) * "
                 . "cos( radians(latitude) ) * "
                 . "cos( radians(longitude) - radians('$longitude') ) + "
@@ -2347,11 +2453,11 @@ class AdminController extends BaseController {
 
         // Add Busy Walkers
 
-        $walkers = DB::table('request')
+        $walkers = DB::table('requests')
                 ->where('walk.is_started', 1)
                 ->where('walk.is_completed', 0)
-                ->join('walker', 'walk.walker_id', '=', 'walker.id')
-                ->select('walker.id', 'walker.phone', 'walker.first_name', 'walker.last_name', 'walker.latitude', 'walker.longitude')
+                ->join('walker', 'walk.walker_id', '=', 'walkers.id')
+                ->select('walkers.id', 'walkers.phone', 'walkers.first_name', 'walkers.last_name', 'walkers.latitude', 'walkers.longitude')
                 ->distinct()
                 ->get();
 
@@ -2372,7 +2478,7 @@ class AdminController extends BaseController {
 
         $response .= '</markers>';
 
-        $content = View::make('walkers_xml')->with('response', $response);
+        $content = View::make('dashboard.walkers_xml')->with('response', $response);
         return Response::make($content, '200')->header('Content-Type', 'text/xml');
     }
 
@@ -2380,12 +2486,12 @@ class AdminController extends BaseController {
         $walk_id = Input::get('walk_id');
         $type = Input::get('type');
         $walker_id = Input::get('walker_id');
-        $walk = Walk::find($walk_id);
+        $walk = \Enfa\Walk::find($walk_id);
         if ($type == 1) {
             $walk->walker_id = $walker_id;
             $walk->save();
         } else {
-            Walk::where('schedule_id', $walk->schedule_id)->where('is_started', 0)->update(array('walker_id' => $walker_id));
+            \Enfa\Walk::where('schedule_id', $walk->schedule_id)->where('is_started', 0)->update(array('walker_id' => $walker_id));
             Schedules::where('id', $walk->schedule_id)->update(array('walker_id' => $walker_id));
         }
         return Redirect::to('/admin/walk/change_walker/' . $walk_id);
@@ -2394,7 +2500,7 @@ class AdminController extends BaseController {
     public function pay_walker() {
         $walk_id = Input::get('walk_id');
         $amount = Input::get('amount');
-        $walk = Walk::find($walk_id);
+        $walk = \Enfa\Walk::find($walk_id);
         $walk->is_paid = 1;
         $walk->amount = $amount;
         $walk->save();
@@ -2460,16 +2566,16 @@ class AdminController extends BaseController {
                 /* DEVICE PUSH NOTIFICATION DETAILS END */
         );
         $success = Input::get('success');
-        $settings = Settings::all();
-        /* $theme = Theme::all(); */
-        $theme = Theme::first();
+        $settings = \Enfa\Settings::all();
+        /* $theme = \Enfa\Themes::all(); */
+        $theme = \Enfa\Themes::first();
         if (isset($theme->id)) {
-            $theme = Theme::first();
+            $theme = \Enfa\Themes::first();
         } else {
             $theme = array();
         }
         $title = ucwords(trans('customize.Settings')); /* 'Settings' */
-        return View::make('settings')
+        return View::make('dashboard.settings')
                         ->with('title', $title)
                         ->with('page', 'settings')
                         ->with('settings', $settings)
@@ -2481,7 +2587,7 @@ class AdminController extends BaseController {
     public function edit_keywords() {
         $success = Input::get('success');
         /* $keywords = Keywords::all(); */
-        $icons = Icons::all();
+        $icons = \Enfa\Icons::all();
 
         $UIkeywords = array();
 
@@ -2505,7 +2611,7 @@ class AdminController extends BaseController {
         $UIkeywords['keyAdmin_Control'] = Lang::get('customize.admin_control');
         $UIkeywords['keyLog_Out'] = Lang::get('customize.log_out');
         $title = ucwords(trans('customize.Customize')); /* 'Customize' */
-        return View::make('keywords')
+        return View::make('dashboard.keywords')
                         ->with('title', $title)
                         ->with('page', 'keywords')
                         /* ->with('keywords', $keywords) */
@@ -2630,7 +2736,7 @@ class AdminController extends BaseController {
         if (Input::has('key_currency')) {
             $key_currency = trim(Input::get('key_currency'));
             if ($key_currency != '$' || $key_currency != "mxn" || $key_currency != "MXN") {
-                $setransfer = Settings::where('key', 'transfer')->first();
+                $setransfer = \Enfa\Settings::where('key', 'transfer')->first();
                 $setransfer->value = 2;
                 $setransfer->save();
             }
@@ -2877,10 +2983,10 @@ class AdminController extends BaseController {
     }
 
     public function save_settings() {
-        $settings = Settings::all();
+        $settings = \Enfa\Settings::all();
         foreach ($settings as $setting) {
             if (Input::get($setting->id) != NULL) {
-                $temp_setting = Settings::find($setting->id);
+                $temp_setting = \Enfa\Settings::find($setting->id);
                 $temp_setting->value = Input::get($setting->id);
                 $temp_setting->save();
             }
@@ -2949,14 +3055,14 @@ class AdminController extends BaseController {
                 /* DEVICE PUSH NOTIFICATION DETAILS END */                );
         $success = Input::get('success');
         $cert_def = 0;
-        $cer = Certificates::where('file_type', 'certificate')->where('client', 'apple')->get();
+        $cer = \Enfa\Certificates::where('file_type', 'certificate')->where('client', 'apple')->get();
         foreach ($cer as $key) {
             if ($key->default == 1) {
                 $cert_def = $key->type;
             }
         }
         $title = ucwords("Installation " . trans('customize.Settings')); /* 'Installation Settings' */
-        return View::make('install_settings')
+        return View::make('dashboard.install_settings')
                         ->with('title', $title)
                         ->with('success', $success)
                         ->with('page', 'settings')
@@ -3561,7 +3667,7 @@ class GCM {
             }
         }
         /* if (Input::hasFile('user_certi_a')) {
-          $certi_user_a = Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'certificate')->where('type', Input::get('cert_type_a'))->first();
+          $certi_user_a = \Enfa\Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'certificate')->where('type', Input::get('cert_type_a'))->first();
           if ($certi_user_a != NULL) {
           //user
           $path = $certi_user_a->name;
@@ -3575,7 +3681,7 @@ class GCM {
 
           }
           }
-          $key = Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'certificate')->first();
+          $key = \Enfa\Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'certificate')->first();
           } else {
           $key = new Certificates();
           $key->client = 'apple';
@@ -3617,7 +3723,7 @@ class GCM {
 
           // User passphrase file.
           if (Input::has('user_pass_a')) {
-          $user_key_db = Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'passphrase')->where('type', Input::get('cert_type_a'))->first();
+          $user_key_db = \Enfa\Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'passphrase')->where('type', Input::get('cert_type_a'))->first();
           if ($user_key_db == NULL) {
           $key = new Certificates();
           $key->client = 'apple';
@@ -3625,7 +3731,7 @@ class GCM {
           $key->user_type = 0;
           $key->file_type = 'passphrase';
           } else {
-          $key = Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'passphrase')->first();
+          $key = \Enfa\Certificates::where('client', 'apple')->where('user_type', 0)->where('file_type', 'passphrase')->first();
           }
           $key->name = Input::get('user_pass_a');
           $count = $count + 1;
@@ -3634,7 +3740,7 @@ class GCM {
 
           // apple provider
           if (Input::hasFile('prov_certi_a')) {
-          $certi_prov_a = Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'certificate')->where('type', Input::get('cert_type_a'))->first();
+          $certi_prov_a = \Enfa\Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'certificate')->where('type', Input::get('cert_type_a'))->first();
           if ($certi_prov_a != NULL) {
           //user
           $path = $certi_prov_a->name;
@@ -3646,7 +3752,7 @@ class GCM {
           } catch (Exception $e) {
 
           }
-          $key = Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'certificate')->first();
+          $key = \Enfa\Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'certificate')->first();
           } else {
           $key = new Certificates();
           $key->client = 'apple';
@@ -3685,7 +3791,7 @@ class GCM {
 
           // Provider passphrase file.
           if (Input::has('prov_pass_a')) {
-          $user_key_db = Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'passphrase')->where('type', Input::get('cert_type_a'))->first();
+          $user_key_db = \Enfa\Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'passphrase')->where('type', Input::get('cert_type_a'))->first();
           if ($user_key_db == NULL) {
           $key = new Certificates();
           $key->client = 'apple';
@@ -3693,7 +3799,7 @@ class GCM {
           $key->user_type = 1;
           $key->file_type = 'passphrase';
           } else {
-          $key = Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'passphrase')->first();
+          $key = \Enfa\Certificates::where('client', 'apple')->where('user_type', 1)->where('file_type', 'passphrase')->first();
           }
           $key->name = Input::get('prov_pass_a');
           $count = $count + 1;
@@ -3702,7 +3808,7 @@ class GCM {
 
           // gcm key file.
           if (Input::has('gcm_key')) {
-          $gcm_key_db = Certificates::where('client', 'gcm')->first();
+          $gcm_key_db = \Enfa\Certificates::where('client', 'gcm')->first();
           if ($gcm_key_db == NULL) {
           $key = new Certificates();
           $key->client = 'gcm';
@@ -3710,7 +3816,7 @@ class GCM {
           $key->user_type = 0;
           $key->file_type = 'browser_key';
           } else {
-          $key = Certificates::where('client', 'gcm')->first();
+          $key = \Enfa\Certificates::where('client', 'gcm')->first();
           }
           $key->name = Input::get('gcm_key');
           $count = $count + 1;
@@ -3720,15 +3826,15 @@ class GCM {
           Log::info("count = " . print_r($count, true));
 
           $cert_def = Input::get('cert_default');
-          $certa = Certificates::where('client', 'apple')->get();
+          $certa = \Enfa\Certificates::where('client', 'apple')->get();
           foreach ($certa as $ca) {
-          $def = Certificates::where('id', $ca->id)->first();
+          $def = \Enfa\Certificates::where('id', $ca->id)->first();
           $def->default = 0;
           $def->save();
           }
-          $certs = Certificates::where('client', 'apple')->where('type', $cert_def)->get();
+          $certs = \Enfa\Certificates::where('client', 'apple')->where('type', $cert_def)->get();
           foreach ($certs as $defc) {
-          $def = Certificates::where('id', $defc->id)->first();
+          $def = \Enfa\Certificates::where('id', $defc->id)->first();
           Log::info('def = ' . print_r($def, true));
           $def->default = 1;
           $def->save();
@@ -3801,16 +3907,16 @@ class GCM {
         Session::put('type', $type);
         if ($type == 'userid') {
             $typename = "Owner ID";
-            $users = Owner::orderBy('id', $valu)->paginate(10);
+            $users = \Enfa\Owners::orderBy('id', $valu)->paginate(10);
         } elseif ($type == 'username') {
             $typename = "Owner Name";
-            $users = Owner::orderBy('first_name', $valu)->paginate(10);
+            $users = \Enfa\Owners::orderBy('first_name', $valu)->paginate(10);
         } elseif ($type == 'useremail') {
             $typename = "Owner Email";
-            $users = Owner::orderBy('email', $valu)->paginate(10);
+            $users = \Enfa\Owners::orderBy('email', $valu)->paginate(10);
         }
         $title = ucwords(trans('customize.User') . 's' . " | Sorted by " . $typename . " in " . $valu); /* 'Owners | Sorted by ' . $typename . ' in ' . $valu */
-        return View::make('owners')
+        return View::make('dashboard.owners')
                         ->with('title', $title)
                         ->with('page', 'owners')
                         ->with('owners', $users);
@@ -3823,67 +3929,67 @@ class GCM {
         Session::put('type', $type);
         if ($type == 'provid') {
             $typename = "Providers ID";
-            /* $providers = Walker::orderBy('id', $valu)->paginate(10); */
+            /* $providers = \Enfa\Walkers::orderBy('id', $valu)->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $providers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->orderBy('walker.id', $valu)
+            $providers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->orderBy('walkers.id', $valu)
                     ->paginate(10);
         } elseif ($type == 'pvname') {
             $typename = "Providers Name";
-            /* $providers = Walker::orderBy('first_name', $valu)->paginate(10); */
+            /* $providers = \Enfa\Walkers::orderBy('first_name', $valu)->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $providers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->orderBy('walker.first_name', $valu)
+            $providers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->orderBy('walkers.first_name', $valu)
                     ->paginate(10);
         } elseif ($type == 'pvemail') {
             $typename = "Providers Email";
-            /* $providers = Walker::orderBy('email', $valu)->paginate(10); */
+            /* $providers = \Enfa\Walkers::orderBy('email', $valu)->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $providers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->orderBy('walker.email', $valu)
+            $providers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->orderBy('walkers.email', $valu)
                     ->paginate(10);
         } elseif ($type == 'pvaddress') {
             $typename = "Providers Address";
-            /* $providers = Walker::orderBy('address', $valu)->paginate(10); */
+            /* $providers = \Enfa\Walkers::orderBy('address', $valu)->paginate(10); */
             $subQuery = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status != 0');
+                    ->whereRaw('walker_id = walkers.id and status != 0');
             $subQuery1 = DB::table('request_meta')
                     ->select(DB::raw('count(*)'))
-                    ->whereRaw('walker_id = walker.id and status=1');
+                    ->whereRaw('walker_id = walkers.id and status=1');
 
-            $providers = DB::table('walker')
-                    ->select('walker.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
-                    /* ->where('walker.is_deleted', 0) */
-                    ->orderBy('walker.address', $valu)
+            $providers = DB::table('walkers')
+                    ->select('walkers.*', DB::raw("(" . $subQuery->toSql() . ") as 'total_requests'"), DB::raw("(" . $subQuery1->toSql() . ") as 'accepted_requests'"))->where('deleted_at', NULL)
+                    /* ->where('walkers.is_deleted', 0) */
+                    ->orderBy('walkers.address', $valu)
                     ->paginate(10);
         }
         $title = ucwords(trans('customize.Provider') . 's' . " | Sorted by " . $typename . " in " . $valu); /* 'Providers | Sorted by ' . $typename . ' in ' . $valu */
-        return View::make('walkers')
+        return View::make('dashboard.walkers')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('walkers', $providers);
@@ -3896,12 +4002,12 @@ class GCM {
         Session::put('type', $type);
         if ($type == 'provid') {
             $typename = "Providers Type ID";
-            $providers = ProviderType::orderBy('id', $valu)->paginate(10);
+            $providers = \Enfa\ProviderType::orderBy('id', $valu)->paginate(10);
         } elseif ($type == 'pvname') {
             $typename = "Providers Name";
-            $providers = ProviderType::orderBy('name', $valu)->paginate(10);
+            $providers = \Enfa\ProviderType::orderBy('name', $valu)->paginate(10);
         }
-        $settings = Settings::where('key', 'default_distance_unit')->first();
+        $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         if ($unit == 0) {
             $unit_set = 'kms';
@@ -3909,7 +4015,7 @@ class GCM {
             $unit_set = 'miles';
         }
         $title = ucwords(trans('customize.Provider') . " Types" . " | Sorted by " . $typename . " in " . $valu); /* 'Provider Types | Sorted by ' . $typename . ' in ' . $valu */
-        return View::make('list_provider_types')
+        return View::make('dashboard.list_provider_types')
                         ->with('title', $title)
                         ->with('page', 'provider-type')
                         ->with('unit_set', $unit_set)
@@ -3923,48 +4029,48 @@ class GCM {
         Session::put('type', $type);
         if ($type == 'reqid') {
             $typename = "Request ID";
-            $requests = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.transfer_amount', 'request.payment_mode')
-                    ->orderBy('request.id', $valu)
+            $requests = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.transfer_amount', 'requests.payment_mode')
+                    ->orderBy('requests.id', $valu)
                     ->paginate(10);
         } elseif ($type == 'owner') {
             $typename = "Owner Name";
-            $requests = DB::table('request')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.transfer_amount', 'request.payment_mode')
-                    ->orderBy('owner.first_name', $valu)
+            $requests = DB::table('requests')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.transfer_amount', 'requests.payment_mode')
+                    ->orderBy('owners.first_name', $valu)
                     ->paginate(10);
         } elseif ($type == 'walker') {
             $typename = "Provider Name";
-            $requests = DB::table('request')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.transfer_amount', 'request.payment_mode')
-                    ->orderBy('walker.first_name', $valu)
+            $requests = DB::table('requests')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.transfer_amount', 'requests.payment_mode')
+                    ->orderBy('walkers.first_name', $valu)
                     ->paginate(10);
         } elseif ($type == 'payment') {
             $typename = "Payment Mode";
-            $requests = DB::table('request')
-                    ->leftJoin('walker', 'request.current_walker', '=', 'walker.id')
-                    ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                    ->groupBy('request.id')
-                    ->select('owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-                            , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.transfer_amount', 'request.payment_mode')
-                    ->orderBy('request.payment_mode', $valu)
+            $requests = DB::table('requests')
+                    ->leftjoin('walkers', 'requests.current_walker', '=', 'walkers.id')
+                    ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                    ->groupBy('requests.id')
+                    ->select('owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+                            , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.transfer_amount', 'requests.payment_mode')
+                    ->orderBy('requests.payment_mode', $valu)
                     ->paginate(10);
         }
-        $setting = Settings::where('key', 'paypal')->first();
+        $setting = \Enfa\Settings::where('key', 'paypal')->first();
         $title = ucwords(trans('customize.Request') . "s" . " | Sorted by " . $typename . " in " . $valu); /* 'Requests | Sorted by ' . $typename . ' in ' . $valu */
-        return View::make('walks')
+        return View::make('dashboard.walks')
                         ->with('title', $title)
                         ->with('page', 'walks')
                         ->with('walks', $requests)
@@ -3993,9 +4099,9 @@ class GCM {
                     ->orderBy('uses', $valu)
                     ->paginate(10);
         }
-        $setting = Settings::where('key', 'paypal')->first();
+        $setting = \Enfa\Settings::where('key', 'paypal')->first();
         $title = ucwords(trans('customize.promo_codes') . " | Sorted by " . $typename . " in " . $valu); /* 'Promocodes | Sorted by ' . $typename . ' in ' . $valu */
-        return View::make('list_promo_codes')
+        return View::make('dashboard.list_promo_codes')
                         ->with('title', $title)
                         ->with('page', 'promo_code')
                         ->with('success', $success)
@@ -4010,24 +4116,24 @@ class GCM {
         Session::put('valu', $valu);
         Session::put('type', $type);
         if ($type == 'promo_id') {
-            $promo_codes = PromoCodes::where('id', $valu)->paginate(10);
+            $promo_codes = \Enfa\PromoCodes::where('id', $valu)->paginate(10);
         } elseif ($type == 'promo_name') {
-            $promo_codes = PromoCodes::where('coupon_code', 'like', '%' . $valu . '%')->paginate(10);
+            $promo_codes = \Enfa\PromoCodes::where('coupon_code', 'like', '%' . $valu . '%')->paginate(10);
         } elseif ($type == 'promo_type') {
             if ($valu == '%') {
-                $promo_codes = PromoCodes::where('type', 1)->paginate(10);
+                $promo_codes = \Enfa\PromoCodes::where('type', 1)->paginate(10);
             } elseif ($val = '$') {
-                $promo_codes = PromoCodes::where('type', 2)->paginate(10);
+                $promo_codes = \Enfa\PromoCodes::where('type', 2)->paginate(10);
             }
         } elseif ($type == 'promo_state') {
             if ($valu == 'active' || $valu == 'Active') {
-                $promo_codes = PromoCodes::where('state', 1)->paginate(10);
+                $promo_codes = \Enfa\PromoCodes::where('state', 1)->paginate(10);
             } elseif ($val = 'Deactivated' || $val = 'deactivated') {
-                $promo_codes = PromoCodes::where('state', 2)->paginate(10);
+                $promo_codes = \Enfa\PromoCodes::where('state', 2)->paginate(10);
             }
         }
         $title = ucwords(trans('customize.promo_codes') . " | Search Result"); /* 'Promo Codes | Search Result' */
-        return View::make('list_promo_codes')
+        return View::make('dashboard.list_promo_codes')
                         ->with('title', $title)
                         ->with('page', 'promo_code')
                         ->with('success', $success)
@@ -4037,18 +4143,18 @@ class GCM {
 // Provider Availability
 
     public function allow_availability() {
-        Settings::where('key', 'allowcal')->update(array('value' => 1));
-        return Redirect::to("/admin/providers");
+        \Enfa\Settings::where('key', 'allowcal')->update(array('value' => 1));
+        return Redirect::to('/admin/providers');
     }
 
     public function disable_availability() {
-        Settings::where('key', 'allowcal')->update(array('value' => 0));
-        return Redirect::to("/admin/providers");
+        \Enfa\Settings::where('key', 'allowcal')->update(array('value' => 0));
+        return Redirect::to('/admin/providers');
     }
 
     public function availability_provider() {
-        $id = Request::segment(4);
-        $provider = Walker::where('id', $id)->first();
+        $id = request()->segment(4);
+        $provider = \Enfa\Walkers::where('id', $id)->first();
         if ($provider) {
             $success = Input::get('success');
             $pavail = ProviderAvail::where('provider_id', $id)->paginate(10);
@@ -4064,19 +4170,19 @@ class GCM {
             $pvjson = json_encode($prvi);
             Log::info('Provider availability json = ' . print_r($pvjson, true));
             $title = ucwords(trans('customize.Provider') . " Availability"); /* 'Provider Availability' */
-            return View::make('availability_provider')
+            return View::make('dashboard.availability_provider')
                             ->with('title', $title)
                             ->with('page', 'walkers')
                             ->with('success', $success)
                             ->with('pvjson', $pvjson)
                             ->with('provider', $provider);
         } else {
-            return View::make('admin.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
     public function provideravailabilitySubmit() {
-        $id = Request::segment(4);
+        $id = request()->segment(4);
         $proavis = $_POST['proavis'];
         $proavie = $_POST['proavie'];
         $length = $_POST['length'];
@@ -4095,18 +4201,18 @@ class GCM {
     }
 
     public function view_documents_provider() {
-        $id = Request::segment(4);
-        $provider = Walker::where('id', $id)->first();
-        $provider_documents = WalkerDocument::where('walker_id', $id)->paginate(10);
+        $id = request()->segment(4);
+        $provider = \Enfa\Walkers::where('id', $id)->first();
+        $provider_documents = Walker\Enfa\Documents::where('walker_id', $id)->paginate(10);
         if ($provider) {
             $title = ucwords(trans('customize.Provider') . " View Documents : " . $provider->first_name . " " . $provider->last_name); /* 'Provider View Documents' */
-            return View::make('view_documents')
+            return View::make('dashboard.view_documents')
                             ->with('title', $title)
                             ->with('page', 'walkers')
                             ->with('docs', $provider_documents)
                             ->with('provider', $provider);
         } else {
-            return View::make('admin.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
+            return View::make('administrators.notfound')->with('title', 'Error Page Not Found')->with('page', 'Error Page Not Found');
         }
     }
 
@@ -4114,27 +4220,27 @@ class GCM {
     public function current() {
         Session::put('che', 'current');
 
-        $walks = DB::table('request')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->select('walker.id as id', 'walker.first_name as first_name', 'walker.last_name as last_name', 'walker.phone as phone', 'walker.email as email', 'walker.picture as picture', 'walker.merchant_id as merchant_id', 'walker.bio as bio', 'request.total as total_requests', 'walker.is_approved as is_approved')
+        $walks = DB::table('requests')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->select('walkers.id as id', 'walkers.first_name as first_name', 'walkers.last_name as last_name', 'walkers.phone as phone', 'walkers.email as email', 'walkers.picture as picture', 'walkers.merchant_id as merchant_id', 'walkers.bio as bio', 'requests.total as total_requests', 'walkers.is_approved as is_approved')
                 ->where('deleted_at', NULL)
-                ->where('request.is_started', 1)
-                ->where('request.is_completed', 0)
+                ->where('requests.is_started', 1)
+                ->where('requests.is_completed', 0)
                 ->paginate(10);
         $title = ucwords(trans('customize.Provider') . "s" . " | Currently Providing"); /* 'Providers | Currently Providing' */
-        return View::make('walkers')
+        return View::make('dashboard.walkers')
                         ->with('title', $title)
                         ->with('page', 'walkers')
                         ->with('walkers', $walks);
     }
 
     public function theme() {
-        $th = Theme::all()->count();
+        $th = \Enfa\Themes::all()->count();
 
         if ($th == 1) {
-            $theme = Theme::first();
+            $theme = \Enfa\Themes::first();
         } else {
-            $theme = new Theme;
+            $theme = new \Enfa\Themes;
         }
 
         $theme->theme_color = '#' . Input::get('color1');
@@ -4413,12 +4519,12 @@ fieldset[disabled] .btn-info.active {
             $theme->favicon = $local_url1;
         }
         $theme->save();
-        return Redirect::to("/admin/settings");
+        return Redirect::to('/admin/settings');
     }
 
     public function transfer_amount() {
-        $request = Requests::where('id', Input::get('request_id'))->first();
-        $walker = Walker::where('id', $request->confirmed_walker)->first();
+        $request = \Enfa\Requests::where('id', Input::get('request_id'))->first();
+        $walker = \Enfa\Walkers::where('id', $request->confirmed_walker)->first();
         $amount = Input::get("amount");
 
         if (($amount + $request->transfer_amount) <= $request->total && ($amount + $request->transfer_amount) > 0) {
@@ -4435,7 +4541,7 @@ fieldset[disabled] .btn-info.active {
                 Braintree_Configuration::merchantId(Config::get('app.braintree_merchant_id'));
                 Braintree_Configuration::publicKey(Config::get('app.braintree_public_key'));
                 Braintree_Configuration::privateKey(Config::get('app.braintree_private_key'));
-                $payment_data = Payment::where('owner_id', $request->owner_id)->first();
+                $payment_data = \Enfa\Payments::where('owner_id', $request->owner_id)->first();
                 $customer_id = $payment_data->customer_id;
                 $result = Braintree_Transaction::sale(
                                 array(
@@ -4451,11 +4557,11 @@ fieldset[disabled] .btn-info.active {
             }
             $request->transfer_amount += $amount;
             $request->save();
-            return Redirect::to("/admin/requests");
+            return Redirect::to('/admin/requests');
         } else {
             Session::put('error', "Amount exceeds the total amount to be paid");
             $title = ucwords("Transfer amount");
-            return View::make('transfer_amount')
+            return View::make('dashboard.transfer_amount')
                             ->with('request', $request)
                             ->with('title', $title)
                             ->with('page', 'walkers');
@@ -4463,10 +4569,10 @@ fieldset[disabled] .btn-info.active {
     }
 
     public function pay_provider($id) {
-        $request = Requests::find($id);
+        $request = \Enfa\Requests::find($id);
         if (Config::get('app.default_payment') == 'stripe') {
             $title = ucwords("Transfer amount");
-            return View::make('transfer_amount')
+            return View::make('dashboard.transfer_amount')
                             ->with('request', $request)
                             ->with('title', $title)
                             ->with('page', 'walkers');
@@ -4475,7 +4581,7 @@ fieldset[disabled] .btn-info.active {
             $clientToken = Braintree_ClientToken::generate();
             Session::put('error', 'Manual Transfer is not available in braintree.');
             $title = ucwords("Transfer amount");
-            return View::make('transfer_amount')
+            return View::make('dashboard.transfer_amount')
                             ->with('request', $request)
                             ->with('clientToken', $clientToken)
                             ->with('title', $title)
@@ -4484,12 +4590,12 @@ fieldset[disabled] .btn-info.active {
     }
 
     public function charge_user($id) {
-        $request = Requests::find($id);
+        $request = \Enfa\Requests::find($id);
         Log::info('Charge User from admin');
         $total = $request->total;
-        $payment_data = Payment::where('owner_id', $request->owner_id)->first();
+        $payment_data = \Enfa\Payments::where('owner_id', $request->owner_id)->first();
         $customer_id = $payment_data->customer_id;
-        $setransfer = Settings::where('key', 'transfer')->first();
+        $setransfer = \Enfa\Settings::where('key', 'transfer')->first();
         $transfer_allow = $setransfer->value;
         if (Config::get('app.default_payment') == 'stripe') {
             //dd($customer_id);
@@ -4503,7 +4609,7 @@ fieldset[disabled] .btn-info.active {
                 Log::info('charge stripe = ' . print_r($charge, true));
             } catch (Stripe_InvalidRequestError $e) {
                 // Invalid parameters were supplied to Stripe's API
-                $ownr = Owner::find($request->owner_id);
+                $ownr = \Enfa\Owners::find($request->owner_id);
                 $ownr->debt = $total;
                 $ownr->save();
                 $response_array = array('error' => $e->getMessage());
@@ -4512,8 +4618,8 @@ fieldset[disabled] .btn-info.active {
                 return $response;
             }
             $request->is_paid = 1;
-            $settng = Settings::where('key', 'service_fee')->first();
-            $settng_mode = Settings::where('key', 'payment_mode')->first();
+            $settng = \Enfa\Settings::where('key', 'service_fee')->first();
+            $settng_mode = \Enfa\Settings::where('key', 'payment_mode')->first();
             if ($settng_mode->value == 2 and $transfer_allow == 1) {
                 $transfer = Stripe_Transfer::create(array(
                             "amount" => ($total - $settng->value) * 100, // amount in cents
@@ -4524,14 +4630,14 @@ fieldset[disabled] .btn-info.active {
             }
         } else {
             try {
-                Braintree_Configuration::environment(Config::get('app.braintree_environment'));
-                Braintree_Configuration::merchantId(Config::get('app.braintree_merchant_id'));
-                Braintree_Configuration::publicKey(Config::get('app.braintree_public_key'));
-                Braintree_Configuration::privateKey(Config::get('app.braintree_private_key'));
+                \Enfa\Braintree_Configuration::environment(Config::get('app.braintree_environment'));
+                \Enfa\Braintree_Configuration::merchantId(Config::get('app.braintree_merchant_id'));
+                \Enfa\Braintree_Configuration::publicKey(Config::get('app.braintree_public_key'));
+                \Enfa\Braintree_Configuration::privateKey(Config::get('app.braintree_private_key'));
                 if ($settng_mode->value == 2 and $transfer_allow == 1) {
-                    $sevisett = Settings::where('key', 'service_fee')->first();
+                    $sevisett = \Enfa\Settings::where('key', 'service_fee')->first();
                     $service_fee = $sevisett->value;
-                    $result = Braintree_Transaction::sale(array(
+                    $result = \Enfa\Braintree_Transaction::sale(array(
                                 'amount' => $total - $service_fee,
                                 'paymentMethodNonce' => $customer_id,
                                 'merchantAccountId' => $walker_data->merchant_id,
@@ -4542,7 +4648,7 @@ fieldset[disabled] .btn-info.active {
                                 'serviceFeeAmount' => $service_fee
                     ));
                 } else {
-                    $result = Braintree_Transaction::sale(array(
+                    $result = \Enfa\Braintree_Transaction::sale(array(
                                 'amount' => $total,
                                 'paymentMethodNonce' => $customer_id
                     ));
@@ -4565,28 +4671,28 @@ fieldset[disabled] .btn-info.active {
 
     public function add_request() {
         Log::info('add request from admin panel.');
-        $owner_id = Request::segment(3);
-        $owner = Owner::find($owner_id);
-        $services = ProviderType::where('is_visible', '=', 1)->get();
-        $total_services = ProviderType::where('is_visible', '=', 1)->count();
+        $owner_id = request()->segment(3);
+        $owner = \Enfa\Owners::find($owner_id);
+        $services = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+        $total_services = \Enfa\ProviderType::where('is_visible', '=', 1)->count();
         // Payment options allowed
         $payment_options = array();
 
-        $payments = Payment::where('owner_id', $owner_id)->count();
+        $payments = \Enfa\Payments::where('owner_id', $owner_id)->count();
 
         if ($payments) {
             $payment_options['stored_cards'] = 1;
         } else {
             $payment_options['stored_cards'] = 0;
         }
-        $codsett = Settings::where('key', 'cod')->first();
+        $codsett = \Enfa\Settings::where('key', 'cod')->first();
         if ($codsett->value == 1) {
             $payment_options['cod'] = 1;
         } else {
             $payment_options['cod'] = 0;
         }
 
-        $paypalsett = Settings::where('key', 'paypal')->first();
+        $paypalsett = \Enfa\Settings::where('key', 'paypal')->first();
         if ($paypalsett->value == 1) {
             $payment_options['paypal'] = 1;
         } else {
@@ -4596,16 +4702,16 @@ fieldset[disabled] .btn-info.active {
         Log::info('payment_options = ' . print_r($payment_options, true));
 
         // Promo code allowed
-        $promosett = Settings::where('key', 'promo_code')->first();
+        $promosett = \Enfa\Settings::where('key', 'promo_code')->first();
         if ($promosett->value == 1) {
             $promo_allow = 1;
         } else {
             $promo_allow = 0;
         }
-        $settdestination = Settings::where('key', 'get_destination')->first();
+        $settdestination = \Enfa\Settings::where('key', 'get_destination')->first();
         $settdestination = $settdestination->value;
         $title = ucwords("Add" . trans('customize.Request')); /* 'Add Request' */
-        return View::make('add_request')
+        return View::make('dashboard.add_request')
                         ->with('owner', $owner)
                         ->with('services', $services)
                         ->with('total_services', $total_services)
@@ -4628,9 +4734,9 @@ fieldset[disabled] .btn-info.active {
 
         $time = date("Y-m-d H:i:s");
 
-        $provider_details = Walker::where('id', '=', $provider)->first();
+        $provider_details = \Enfa\Walkers::where('id', '=', $provider)->first();
 
-        $user = Owner::where('id', '=', $user_id)->first();
+        $user = \Enfa\Owners::where('id', '=', $user_id)->first();
 
         $request = new Requests;
         $request->owner_id = $user_id;
@@ -4650,12 +4756,12 @@ fieldset[disabled] .btn-info.active {
         $request_service->request_id = $request->id;
         $request_service->save();
 
-        $owner = Owner::find($user_id);
+        $owner = \Enfa\Owners::find($user_id);
         $owner->latitude = $latitude;
         $owner->longitude = $longitude;
         $owner->save();
 
-        $walkerlocation = new WalkLocation;
+        $walkerlocation = new \Enfa\WalkLocation;
         $walkerlocation->request_id = $request->id;
         $walkerlocation->distance = 0.00;
         $walkerlocation->latitude = $latitude;
@@ -4665,7 +4771,7 @@ fieldset[disabled] .btn-info.active {
 
         if ($request->save()) {
 
-            $current_request = Requests::where('id', '=', $reqid)->first();
+            $current_request = \Enfa\Requests::where('id', '=', $reqid)->first();
             Session::put('msg', 'A New Request is Created Successfully');
             return Redirect::to('/admin/users');
         }
@@ -4715,10 +4821,10 @@ fieldset[disabled] .btn-info.active {
         $start_date = date("Y-m-d", strtotime($start_date));
         $end_date = date("Y-m-d", strtotime($end_date));
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -4726,38 +4832,38 @@ fieldset[disabled] .btn-info.active {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
 
         if (Input::get('status') && Input::get('status') != 0) {
             if ($status == 1) {
-                $query = $query->where('request.is_completed', '=', 1);
+                $query = $query->where('requests.is_completed', '=', 1);
             } else {
-                $query = $query->where('request.is_cancelled', '=', 1);
+                $query = $query->where('requests.is_cancelled', '=', 1);
             }
         } else {
 
             $query = $query->where(function ($que) {
-                $que->where('request.is_completed', '=', 1)
-                        ->orWhere('request.is_cancelled', '=', 1);
+                $que->where('requests.is_completed', '=', 1)
+                        ->orWhere('requests.is_cancelled', '=', 1);
             });
         }
 
-        /* $walks = $query->select('request.request_start_time', 'walker_type.name as type', 'request.ledger_payment', 'request.card_payment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.*', 'request.is_walker_arrived', 'request.payment_mode', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker'
-          , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled');
+        /* $walks = $query->select('requests.request_start_time', 'walker_types.name as type', 'requests.ledger_payment', 'requests.card_payment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.*', 'requests.is_walker_arrived', 'requests.payment_mode', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker'
+          , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled');
           $walks = $walks->paginate(10); */
-        $walks = $query->select('request.request_start_time', 'walker_type.name as type', 'request.ledger_payment', 'request.card_payment', 'owner.first_name as owner_first_name', 'owner.last_name as owner_last_name', 'walker.first_name as walker_first_name', 'walker.last_name as walker_last_name', 'owner.id as owner_id', 'walker.id as walker_id', 'request.id as id', 'request.created_at as date', 'request.is_started', 'request.is_walker_arrived', 'request.payment_mode', 'request.is_completed', 'request.is_paid', 'request.is_walker_started', 'request.confirmed_walker', 'request.promo_id', 'request.promo_code'
-                , 'request.status', 'request.time', 'request.distance', 'request.total', 'request.is_cancelled', 'request.promo_payment');
+        $walks = $query->select('requests.request_start_time', 'walker_types.name as type', 'requests.ledger_payment', 'requests.card_payment', 'owners.first_name as owner_first_name', 'owners.last_name as owner_last_name', 'walkers.first_name as walker_first_name', 'walkers.last_name as walker_last_name', 'owners.id as owner_id', 'walkers.id as walker_id', 'requests.id as id', 'requests.created_at as date', 'requests.is_started', 'requests.is_walker_arrived', 'requests.payment_mode', 'requests.is_completed', 'requests.is_paid', 'requests.is_walker_started', 'requests.confirmed_walker', 'requests.promo_id', 'requests.promo_code'
+                , 'requests.status', 'requests.time', 'requests.distance', 'requests.total', 'requests.is_cancelled', 'requests.promo_payment');
         $walks = $walks->orderBy('id', 'DESC')->paginate(10);
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -4765,20 +4871,20 @@ fieldset[disabled] .btn-info.active {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
 
-        $completed_rides = $query->where('request.is_completed', 1)->count();
+        $completed_rides = $query->where('requests.is_completed', 1)->count();
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -4786,19 +4892,19 @@ fieldset[disabled] .btn-info.active {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $cancelled_rides = $query->where('request.is_cancelled', 1)->count();
+        $cancelled_rides = $query->where('requests.is_cancelled', 1)->count();
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -4806,19 +4912,19 @@ fieldset[disabled] .btn-info.active {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $card_payment = $query->where('request.is_completed', 1)->sum('request.card_payment');
+        $card_payment = $query->where('requests.is_completed', 1)->sum('requests.card_payment');
 
 
-        $query = DB::table('request')
-                ->leftJoin('owner', 'request.owner_id', '=', 'owner.id')
-                ->leftJoin('walker', 'request.confirmed_walker', '=', 'walker.id')
-                ->leftJoin('walker_type', 'walker.type', '=', 'walker_type.id');
+        $query = DB::table('requests')
+                ->leftjoin('owners', 'requests.owner_id', '=', 'owners.id')
+                ->leftjoin('walkers', 'requests.confirmed_walker', '=', 'walkers.id')
+                ->leftJoin('walker_types', 'walkers.type', '=', 'walker_types.id');
 
         if (Input::get('start_date') && Input::get('end_date')) {
             $query = $query->where('request_start_time', '>=', $start_time)
@@ -4826,14 +4932,14 @@ fieldset[disabled] .btn-info.active {
         }
 
         if (Input::get('walker_id') && Input::get('walker_id') != 0) {
-            $query = $query->where('request.confirmed_walker', '=', $walker_id);
+            $query = $query->where('requests.confirmed_walker', '=', $walker_id);
         }
 
         if (Input::get('owner_id') && Input::get('owner_id') != 0) {
-            $query = $query->where('request.owner_id', '=', $owner_id);
+            $query = $query->where('requests.owner_id', '=', $owner_id);
         }
-        $credit_payment = $query->where('request.is_completed', 1)->sum('request.ledger_payment');
-        $cash_payment = $query->where('request.payment_mode', 1)->sum('request.total');
+        $credit_payment = $query->where('requests.is_completed', 1)->sum('requests.ledger_payment');
+        $cash_payment = $query->where('requests.payment_mode', 1)->sum('requests.total');
 
 
         if (Input::get('submit') && Input::get('submit') == 'Download_Report') {
@@ -4841,7 +4947,7 @@ fieldset[disabled] .btn-info.active {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename=data.csv');
             $handle = fopen('php://output', 'w');
-            $settings = Settings::where('key', 'default_distance_unit')->first();
+            $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
             $unit = $settings->value;
             if ($unit == 0) {
                 $unit_set = 'kms';
@@ -4889,11 +4995,11 @@ fieldset[disabled] .btn-info.active {
             /* $currency_selected = Keywords::where('alias', 'Currency')->first();
               $currency_sel = $currency_selected->keyword; */
             $currency_sel = Config::get('app.generic_keywords.Currency');
-            $walkers = Walker::paginate(10);
-            $owners = Owner::paginate(10);
+            $walkers = \Enfa\Walkers::paginate(10);
+            $owners = \Enfa\Owners::paginate(10);
             $payment_default = ucfirst(Config::get('app.default_payment'));
             $title = ucwords(trans('customize.payment_details')); /* 'Payments' */
-            return View::make('payment')
+            return View::make('dashboard.payment')
                             ->with('title', $title)
                             ->with('page', 'payments')
                             ->with('walks', $walks)
@@ -4909,5 +5015,10 @@ fieldset[disabled] .btn-info.active {
                             ->with('payment_default', $payment_default);
         }
     }
+
+
+
+//fin old
+
 
 }
