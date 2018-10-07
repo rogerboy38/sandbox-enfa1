@@ -1,6 +1,50 @@
 <?php
 namespace Enfa\Http\Controllers;
 
+use App\Http\Requests\ProductCreateRequest;
+
+use PayPal\Rest\ApiContext;
+use PayPal\Auth\OAuthTokenCredential;
+use PayPal\Api\Amount;
+use PayPal\Api\Details;
+use PayPal\Api\Item;
+use PayPal\Api\ItemList;
+use PayPal\Api\Payer;
+use PayPal\Api\Payment as PaymentPaypal;
+use PayPal\Api\RedirectUrls;
+use PayPal\Api\ExecutePayment;
+use PayPal\Api\PaymentExecution;
+use PayPal\Api\Transaction;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Model;
+use App\Product;
+use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
+use Closure;
+use Illuminate\Support\Facades\Auth;
+use Enfa\Http\Controllers\Controller;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\DB;
+use Enfa\Models\State as States;
+use Enfa\users as users;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\View;
+use Enfa\filters;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use App\User;
+use Illuminate\Support\Facades\Log;
+
+
+
+
+//use Theme as Theme;
+
+use Enfa\models\owners as owners;
+
 class WalkerController extends BaseController {
 
     public function isAdmin($token) {
@@ -9,10 +53,10 @@ class WalkerController extends BaseController {
 
     public function getWalkerData($walker_id, $token, $is_admin) {
 
-        if ($walker_data = Walker::where('token', '=', $token)->where('id', '=', $walker_id)->first()) {
+        if ($walker_data = \Enfa\Walkers::where('token', '=', $token)->where('id', '=', $walker_id)->first()) {
             return $walker_data;
         } elseif ($is_admin) {
-            $walker_data = Walker::where('id', '=', $walker_id)->first();
+            $walker_data = \Enfa\Walkers::where('id', '=', $walker_id)->first();
             if (!$walker_data) {
                 return false;
             }
@@ -150,7 +194,7 @@ class WalkerController extends BaseController {
             $response_code = 200;
         } else {
 
-            if (Walker::where('email', '=', $email)->first()) {
+            if (\Enfa\Walkers::where('email', '=', $email)->first()) {
                 $response_array = array('success' => false, 'error' => 'Email ID already Registred', 'error_code' => 402);
                 $response_code = 200;
             } else {
@@ -288,7 +332,7 @@ class WalkerController extends BaseController {
                 $settings = Settings::where('key', 'admin_email_address')->first();
                 $admin_email = $settings->value;
                 $pattern = array('admin_eamil' => $admin_email, 'name' => ucwords($walker->first_name . " " . $walker->last_name), 'web_url' => web_url());
-                $subject = "Bienvenido a la comunidad KOUR, " . ucwords($walker->first_name . " " . $walker->last_name) . "";
+                $subject = "Bienvenido a la comunidad Enfadelivery-Transport-, " . ucwords($walker->first_name . " " . $walker->last_name) . "";
                 email_notification($walker->id, 'walker', $pattern, $subject, 'walker_register', null);
                 $txt_approve = "Decline";
                 if ($walker->is_approved) {
@@ -361,7 +405,7 @@ class WalkerController extends BaseController {
                 $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                 $response_code = 200;
             } else {
-                if ($walker = Walker::where('email', '=', $email)->first()) {
+                if ($walker = \Enfa\Walkers::where('email', '=', $email)->first()) {
                     if (Hash::check($password, $walker->password)) {
                         if ($login_by != "manual") {
                             $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
@@ -439,7 +483,7 @@ class WalkerController extends BaseController {
                 $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                 $response_code = 200;
             } else {
-                if ($walker = Walker::where('social_unique_id', '=', $social_unique_id)->first()) {
+                if ($walker = \Enfa\Walkers::where('social_unique_id', '=', $social_unique_id)->first()) {
                     if (!in_array($login_by, array('facebook', 'google'))) {
                         $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
                         $response_code = 200;
@@ -710,7 +754,7 @@ class WalkerController extends BaseController {
                         $status_txt = "active";
                     }
                     if (is_token_active($walker_data->token_expiry) || $is_admin) {
-                        $walker = Walker::find($walker_id);
+                        $walker = \Enfa\Walkers::find($walker_id);
 
                         $location = get_location($latitude, $longitude);
                         $latitude = $location['lat'];
@@ -993,13 +1037,13 @@ $conn->close();
 
                                 // Update Walker availability
 
-                                Walker::where('id', '=', $walker_id)->update(array('is_available' => 0));
+                                \Enfa\Walkers::where('id', '=', $walker_id)->update(array('is_available' => 0));
 
                                 // remove other schedule_meta
                                 RequestMeta::where('request_id', '=', $request_id)->where('status', '=', 0)->delete();
 
                                 // Send Notification
-                                $walker = Walker::find($walker_id);
+                                $walker = \Enfa\Walkers::find($walker_id);
                                 $walker_data = array();
                                 $walker_data['first_name'] = $walker->first_name;
                                 $walker_data['last_name'] = $walker->last_name;
@@ -1159,7 +1203,7 @@ $conn->close();
 
                                     // Send Notification
 
-                                    $walker = Walker::find($request_meta->walker_id);
+                                    $walker = \Enfa\Walkers::find($request_meta->walker_id);
                                     $settings = Settings::where('key', 'provider_timeout')->first();
                                     $time_left = $settings->value;
 
@@ -1725,8 +1769,8 @@ $conn->close();
                                 }
 
                                 $admins = Admin::first();
-                                $walker = Walker::where('id', $walker_id)->first();
-                                //$walker = Walker::where('id', $walker_id)->get();
+                                $walker = \Enfa\Walkers::where('id', $walker_id)->first();
+                                //$walker = \Enfa\Walkers::where('id', $walker_id)->get();
                                 $bill['walker']['email'] = $walker->email;
                                 $bill['admin']['email'] = $admins->username;
                                 if ($request->transfer_amount != 0) {
@@ -2066,7 +2110,7 @@ $conn->close();
 
                                     // Send Notification
                                     $msg_array = array();
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_data = array();
                                     $walker_data['first_name'] = $walker->first_name;
                                     $walker_data['last_name'] = $walker->last_name;
@@ -2224,7 +2268,7 @@ $conn->close();
                                     $walker_data->save();
 
                                     // Send Notification
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_data = array();
                                     $walker_data['first_name'] = $walker->first_name;
                                     $walker_data['last_name'] = $walker->last_name;
@@ -2388,7 +2432,7 @@ $conn->close();
                                     $walk_location->save();
 
                                     // Send Notification
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker->old_latitude = $walker->latitude;
                                     $walker->old_longitude = $walker->longitude;
                                     $walker->latitude = $latitude;
@@ -2518,7 +2562,7 @@ $conn->close();
                 $distance=$distance-5.0;
             }
             $time = Input::get('time');
-            Log::info('time kourer = ' . print_r($time, true));
+            Log::info('time Enfadelivery-Transport-er = ' . print_r($time, true));
            /* if(isset(Input::get('time')))
             {
                 $time = Input::get('time');
@@ -2929,7 +2973,7 @@ $conn->close();
                                         sms_notification(1, 'admin', $pattern);
                                     }
 
-                                    $walker = Walker::find($walker_id);
+                                    $walker = \Enfa\Walkers::find($walker_id);
                                     $walker->is_available = 1;
 
                                     $location = get_location($latitude, $longitude);
@@ -2954,7 +2998,7 @@ $conn->close();
                                     $walk_location->save();
 
                                     // Send Notification
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_data = array();
                                     $walker_data['first_name'] = $walker->first_name;
                                     $walker_data['last_name'] = $walker->last_name;
@@ -3224,7 +3268,7 @@ $conn->close();
                                     $email_data['start_location'] = $start_location;
                                     $email_data['end_location'] = $end_location;
 
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_review = WalkerReview::where('request_id', $id)->first();
                                     if ($walker_review) {
                                         $rating = round($walker_review->rating);
@@ -3523,7 +3567,7 @@ $conn->close();
                                         sms_notification(1, 'admin', $pattern);
                                     }
 
-                                    $walker = Walker::find($walker_id);
+                                    $walker = \Enfa\Walkers::find($walker_id);
                                     $walker->is_available = 1;
 
                                     $location = get_location($latitude, $longitude);
@@ -3548,7 +3592,7 @@ $conn->close();
                                     $walk_location->save();
 
                                     // Send Notification
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_data = array();
                                     $walker_data['first_name'] = $walker->first_name;
                                     $walker_data['last_name'] = $walker->last_name;
@@ -3818,7 +3862,7 @@ $conn->close();
                                     $email_data['start_location'] = $start_location;
                                     $email_data['end_location'] = $end_location;
 
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_review = WalkerReview::where('request_id', $id)->first();
                                     if ($walker_review) {
                                         $rating = round($walker_review->rating);
@@ -4433,7 +4477,7 @@ $conn->close();
                                         sms_notification(1, 'admin', $pattern);
                                     }
 
-                                    $walker = Walker::find($walker_id);
+                                    $walker = \Enfa\Walkers::find($walker_id);
                                     $walker->is_available = 1;
 
                                     $location = get_location($latitude, $longitude);
@@ -4458,7 +4502,7 @@ $conn->close();
                                     $walk_location->save();
 
                                     // Send Notification
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_data = array();
                                     $walker_data['first_name'] = $walker->first_name;
                                     $walker_data['last_name'] = $walker->last_name;
@@ -4758,7 +4802,7 @@ $conn->close();
                                     $email_data['start_location'] = $start_location;
                                     $email_data['end_location'] = $end_location;
 
-                                    $walker = Walker::find($request->confirmed_walker);
+                                    $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                     $walker_review = WalkerReview::where('request_id', $id)->first();
                                     if ($walker_review) {
                                         $rating = round($walker_review->rating);
@@ -5120,12 +5164,12 @@ $conn->close();
                                     sms_notification(1, 'admin', $pattern);
                                 }
 
-                                $walker = Walker::find($walker_id);
+                                $walker = \Enfa\Walkers::find($walker_id);
                                 $walker->is_available = 1;
                                 $walker->save();
 
                                 // Send Notification
-                                $walker = Walker::find($request->confirmed_walker);
+                                $walker = \Enfa\Walkers::find($request->confirmed_walker);
                                 $walker_data = array();
                                 $walker_data['first_name'] = $walker->first_name;
                                 $walker_data['last_name'] = $walker->last_name;
@@ -5350,7 +5394,7 @@ $conn->close();
                                         $distance = 0;
                                     }
 
-                                    $walker = Walker::find($walker_id);
+                                    $walker = \Enfa\Walkers::find($walker_id);
 
                                     $location = get_location($latitude, $longitude);
                                     $latitude = $location['lat'];
@@ -5417,7 +5461,7 @@ $conn->close();
                                     );
                                     $response_code = 200;
                                 } else {
-                                    $walker = Walker::find($walker_id);
+                                    $walker = \Enfa\Walkers::find($walker_id);
 
                                     $location = get_location($latitude, $longitude);
                                     $latitude = $location['lat'];
@@ -5554,7 +5598,7 @@ $conn->close();
             if ($walker_data = $this->getWalkerData($walker_id, $token, $is_admin)) {
                 // check for token validity
                 if (is_token_active($walker_data->token_expiry) || $is_admin) {
-                    $walker = Walker::find($walker_id);
+                    $walker = \Enfa\Walkers::find($walker_id);
                     $walker->is_active = ($walker->is_active + 1) % 2;
                     $walker->save();
                     $response_array = array('success' => true, 'is_active' => $walker->is_active);
@@ -5633,7 +5677,7 @@ $conn->close();
                         if ($old_password != "" || $old_password != NULL) {
                             if (Hash::check($old_password, $walker_data->password)) {
 
-                                $walker = Walker::find($walker_id);
+                                $walker = \Enfa\Walkers::find($walker_id);
                                 if ($first_name) {
                                     $walker->first_name = $first_name;
                                 }
@@ -5758,7 +5802,7 @@ $conn->close();
                         }
                     } else {
 
-                        $walker = Walker::find($walker_id);
+                        $walker = \Enfa\Walkers::find($walker_id);
                         if ($first_name) {
                             $walker->first_name = $first_name;
                         }
@@ -5950,7 +5994,7 @@ $conn->close();
                     } elseif ($unit == 1) {
                         $unit_set = 'miles';
                     }
-                    $walker = Walker::where('id', $walker_id)->first();
+                    $walker = \Enfa\Walkers::where('id', $walker_id)->first();
                     foreach ($request_data as $data) {
                         $discount = 0;
                         if ($data->promo_id != "") {
@@ -6362,7 +6406,7 @@ $conn->close();
                 $default_banking = Config::get('app.default_payment');
                 $resp = array();
                 $resp['default_banking'] = $default_banking;
-                $walker = Walker::where('id', $walker_id)->first();
+                $walker = \Enfa\Walkers::where('id', $walker_id)->first();
                 if ($walker->merchant_id != NULL) {
                     $resp['walker']['merchant_id'] = $walker->merchant_id;
                 }
@@ -6398,7 +6442,7 @@ $conn->close();
 // check for token validity
                     if (is_token_active($walker_data->token_expiry) || $is_admin) {
 
-                        //$walker = Walker::find($walker_id);
+                        //$walker = \Enfa\Walkers::find($walker_id);
                         $walker_data->latitude = 0;
                         $walker_data->longitude = 0;
                         $walker_data->old_latitude = 0;

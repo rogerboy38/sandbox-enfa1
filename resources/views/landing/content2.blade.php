@@ -1,6 +1,6 @@
 
 <section class="welcome">
-  <img class="welcome__bg-img img-fluid"src="img/bg-2.jpg" alt="">
+  <img class="welcome__bg-img img-fluid"src="./src/images/img/bg-2.jpg" alt="">
   <div class="welcome__overlay">
     <div class="welcome__title">
       <div class="title">

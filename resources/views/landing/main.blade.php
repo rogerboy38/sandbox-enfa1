@@ -1,6 +1,17 @@
 <main class="home">
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <link id="bsdp-css" href="bootstrap-datepicker/css/bootstrap-datepicker.min.css" rel="stylesheet">
+  <script>
+  $( function() {
+    $( "#datepicker" ).datepicker();
+  } );
+  </script>
+
+
   <section class="welcome-bg">
-    <img class="welcome-bg -img img-fluid"src="src/images/bg-2.jpg" alt="">
+    <img class="welcome-bg -img img-fluid"src="./src/images/bg-2.jpg" alt="">
     <div class="row align-items-center">
       <div class="col title">
         <p>Envía o transporta tu carga</p>
@@ -14,33 +25,7 @@
         </p>
       </div>
     </div>
-    <form class="row m-0">
-      <div class="col-xs-12  col-md-3">
-        <label for="">Origen</label>
-        <input type="text" class="form-control" value="CDMX">
-      </div>
-      <div class="col-xs-12  col-md-3">
-        <label for="">Destino</label>
-        <input type="text" class="form-control" value="Tijuana">
-      </div>
-      <div class="col-xs-12  col-md-3">
-        <label for="">Fecha</label>
-        <input type="date" class="form-control">
-      </div>
-      <div class="col-xs-12  col-md-2">
-        <label for="">Tipo</label>
-        <select class="custom-select">
-          <option selected>Caja seca</option>
-          <option value="1">Caja refigerada</option>
-          <option value="2">Otro</option>
-        </select>
-      </div>
-      <div class="col-xs-12 col-md-1 text-center">
-        <button class="btn m-btn--pill m-btn--air btn-warning" type="button" name="button">
-          BUSCAR
-        </button>
-      </div>
-    </form>
+    @include('landing.form.content')
   </section>
   <section class="container enfa-content">
     <h2 class="text-center">Envía tu carga en 3 pasos 😉</h2>

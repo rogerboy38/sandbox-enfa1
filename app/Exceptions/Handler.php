@@ -4,6 +4,7 @@ namespace Enfa\Exceptions;
 
 use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 
 class Handler extends ExceptionHandler
 {
@@ -13,7 +14,8 @@ class Handler extends ExceptionHandler
      * @var array
      */
     protected $dontReport = [
-        //
+      'Symfony\Component\HttpKernel\Exception\HttpException'
+
     ];
 
     /**
@@ -36,7 +38,7 @@ class Handler extends ExceptionHandler
      */
     public function report(Exception $exception)
     {
-        parent::report($exception);
+        return parent::report($exception);
     }
 
     /**
@@ -50,4 +52,41 @@ class Handler extends ExceptionHandler
     {
         return parent::render($request, $exception);
     }
+
+    // woops
+    /**
+     * Create a Symfony response for the given exception.
+     *
+     * @param  \Exception  $e
+     * @return mixed
+     */
+    protected function convertExceptionToResponse(Exception $e)
+    {
+        if (config('app.debug')) {
+            $whoops = new \Whoops\Run;
+            $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+
+            return response()->make(
+                $whoops->handleException($e),
+                method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500,
+                method_exists($e, 'getHeaders') ? $e->getHeaders() : []
+            );
+        }
+
+        return parent::convertExceptionToResponse($e);
+    }
+
+/*
+    public function render($request, Exception $exception)
+        {
+           if ($exception instanceof \Illuminate\Session\TokenMismatchException) {
+               return redirect()
+                      ->back()
+                      ->withInput($request->except(['password', 'password_confirmation']))
+                      ->with('error', 'The form has expired due to inactivity. Please try again');
+           }
+
+           return parent::render($request, $exception);
+        }
+*/    
 }

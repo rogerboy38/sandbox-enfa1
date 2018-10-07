@@ -1,0 +1,29 @@
+.enfa-content {
+    padding: 4em 0;
+}
+.enfa-content__why {
+  padding: 4em;
+}
+.anchor-more {
+  font-size: 14px;
+  font-weight: bold;
+  ion-icon {
+    color: $yellow-gold;
+  }
+  &:hover {
+    color: $yellow-gold;
+  }
+}
+
+
+.services {
+  padding: 4em;
+}
+.services__send {
+  background: linear-gradient(to right, rgb(242, 153, 74), rgb(242, 201, 76));
+}
+.services__ship {
+  color: #fff;
+  background-image: url('../img/bg-1.jpg');
+  background-size: cover;
+}

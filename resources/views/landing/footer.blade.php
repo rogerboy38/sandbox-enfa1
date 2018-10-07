@@ -3,7 +3,7 @@
     <section class="row">
         <div class="col-xs-12 col-md-4">
             <a href="marketplace.html">
-              <img class="logo" src="./src/images/logo.svg" alt="Enfa">
+              <img class="logo" src="{{asset('/src/images/logoinv.svg')}}" alt="Enfa">
             </a>
             <p>
               Enfadelivery se encarga de proveer servicios de transporte mediante

@@ -2,7 +2,7 @@
 
 namespace Enfa\Http\Controllers\Auth;
 
-use Enfa\User;
+use Enfa\Users;
 use Enfa\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -22,13 +22,16 @@ class RegisterController extends Controller
     */
 
     use RegistersUsers;
-
+    public function ShowRegistrationForm ( )
+    {
+      return view('auth.register');
+    }
     /**
      * Where to redirect users after registration.
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/landing';
 
     /**
      * Create a new controller instance.
@@ -49,6 +52,7 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         return Validator::make($data, [
+            'user_id' => 'required|string|max:255|unique:users',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
@@ -63,7 +67,8 @@ class RegisterController extends Controller
      */
     protected function create(array $data)
     {
-        return User::create([
+        return Users::create([
+            'user_id' => $data['user_id'],
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),

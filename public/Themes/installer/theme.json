@@ -1,0 +1,8 @@
+{
+  "name": "installer",
+  "title": "installer",
+  "description": "Installer Theme",
+  "author": "Rubi Vega",
+  "version": "1.0.0",
+  "parent": "enfatheme"
+}
