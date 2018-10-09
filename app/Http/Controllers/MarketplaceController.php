@@ -88,7 +88,7 @@ class WebUserController extends Controller {
                 return Redirect::to('/usuarios/entrar');
             } else {
                 $user_id = Session::get('user_id');
-                $owner = \Enfa\Owner::where('id', $user_id)->first();
+                $owner = \Enfa\Owners::where('id', $user_id)->first();
                 Session::put('user_name', $owner->first_name . " " . $owner->last_name);
                 Session::put('user_pic', $owner->picture);
             }

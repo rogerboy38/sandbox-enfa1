@@ -17,9 +17,8 @@
         "laraveles/spanish": "^1.1",
         "llama-laravel/eloquent": "dev-master",
         "monolog/monolog": "^1.12",
-        "noodlehaus/config": "^0.8.2",
-        "shipu/themevel": "^1.6"
-
+        "shipu/themevel": "^1.6",
+        "yajra/laravel-datatables-oracle": "6.*"
     },
     "require-dev": {
         "filp/whoops": "^2.0",

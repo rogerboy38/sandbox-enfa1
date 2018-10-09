@@ -26,8 +26,13 @@ Route::group(['middleware'=>'web'], function (){
 Route::resource('/landing/guestQueries', 'QueryController')->names([
     'search' => 'search.build'
 ]);
-
-
+//preparacion para Datatables
+Route::get('create', 'QueryController@create');
+Route::get('index', 'QueryController@index2');
+Route::resource('list_availables_data', 'QueryController@data_availables');
+Route::resource('list_availables', 'QueryController@list_availables');
+Route::get('/create', 'QueryController@create');
+Route::get('/index', 'QueryController@index2');
 
 
 

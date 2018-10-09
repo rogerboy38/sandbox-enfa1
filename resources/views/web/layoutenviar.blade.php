@@ -2,27 +2,30 @@
 <html dir="ltr" lang="en">
  <!-- HEAD -->
 <head>
-    @include('landing.head')
+    @include('landing.marketplaceHead')
 </head>
 <!-- END HEAD -->
 <body>
 
     <!-- HEADER -->
-      @include('landing.header')
+      @include('landing.marketplaceHeader')
     <!-- END HEADER -->
     <!-- NAV -->
-      @include('landing.nav')
+      @include('landing.marketplaceNav')
     <!-- END NAV -->
     <!-- MAIN-->
+    <section class="col-md-9 dashboard__user" role="main">
 
-      @include('info.mainEnviar')
-      @include('dashboard.marketplace')
+      @include('landing.form.content')
+      @include('web.listadoAvailables')
+    
 
+      </section>
     <!-- END MAIN -->
     <!-- FOOTER -->
       @include('landing.footer')
 
     <!-- END FOOTER -->
-
+<script src="https://unpkg.com/ionicons@4.2.4/dist/ionicons.js"></script>
 </body>
 </html>

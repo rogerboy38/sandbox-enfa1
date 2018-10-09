@@ -74,6 +74,17 @@ class LandingController extends Controller
 			]);
 
 	}
+
+  public function getOrigenDestino() {
+
+        $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
+        $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+        $types_dim = \Enfa\ProviderType::where('is_visible', '=', 2)->get();
+        return View::make('landing.create', compact('cities',$cities, 'types',$types, 'types_dim',$types_dim));
+
+  }
+
+
 	/**
 	 * Display a listing of the resource.
 	 *
@@ -84,13 +95,15 @@ class LandingController extends Controller
 
     //$users = \Enfa\Users::All();
 		//return \View::make("landing.create", compact('users'));
-
+    $controller = new LandingController;
+    return $controller->getOrigenDestino();
+    /*
     $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
     $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
     $types_dim = \Enfa\ProviderType::where('is_visible', '=', 2)->get();
     return View::make('landing.create', compact('cities',$cities, 'types',$types, 'types_dim',$types_dim));
-
-	 	//return View::make('welcome');
+    */
+	 	//return $cities;
 	}
 
 public function marketplace()
@@ -215,7 +228,7 @@ public function marketplace()
         $owner_id = Session::get('user_id');
         $type = Input::get('type');
         $date= Input::get('date');
-        return \View::make("info.quieroEnviar")
+        return \View::make("web.layoutenviar")
         ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's')
         ->with('origen', $origen)
         ->with('destino', $destino)

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Enfadelivery'),
 
     /*
     |--------------------------------------------------------------------------
@@ -168,6 +168,7 @@ return [
         Enfa\Providers\RouteServiceProvider::class,
         Enfa\Providers\ListsWorkAround::class,
         Enfa\Providers\HelperServiceProvider::class,
+        Yajra\Datatables\DatatablesServiceProvider::class,
 
        // Enfa\Providers\ThemeServiceProvider::class,
 
@@ -226,6 +227,7 @@ return [
         'Theme' => Shipu\Themevel\Facades\Theme::class,
         'UserTrait' => Illuminate\Auth\UserTrait::class,
         'Log' => Illuminate\Log\LogManager::class,
+        'Datatables' => Yajra\Datatables\Datatables::class,
 
     ],
 

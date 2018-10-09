@@ -150,10 +150,10 @@ public function ownerVerify() {
 
     public function getOwnerData($owner_id, $token, $is_admin) {
 
-        if ($owner_data = \Enfa\Owner::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
+        if ($owner_data = \Enfa\Owners::where('token', '=', $token)->where('id', '=', $owner_id)->first()) {
             return $owner_data;
         } elseif ($is_admin) {
-            $owner_data = \Enfa\Owner::where('id', '=', $owner_id)->first();
+            $owner_data = \Enfa\Owners::where('id', '=', $owner_id)->first();
             if (!$owner_data) {
                 return false;
             }
@@ -256,7 +256,7 @@ public function ownerVerify() {
       $ledger->amount_earned = $ledger->amount_earned + $referral_bonus;
       $ledger->save();
 
-      $owner = \Enfa\Owner::find($owner_id);
+      $owner = \Enfa\Owners::find($owner_id);
       $owner->referred_by = $ledger->owner_id;
       $owner->save();
 
@@ -357,7 +357,7 @@ public function ownerVerify() {
                             $referred_by = $ledger->owner_id;
                             if ($referred_by != $owner_id) {
                                 if ($owner_data->is_referee) {
-                                    $owner = \Enfa\Owner::find($owner_id);
+                                    $owner = \Enfa\Owners::find($owner_id);
                                     $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => false,
@@ -401,11 +401,11 @@ public function ownerVerify() {
                                     $ledger1->amount_earned = $ledger1->amount_earned + $referral;
                                     $ledger1->save();
 
-                                    $owner = \Enfa\Owner::find($owner_id);
+                                    $owner = \Enfa\Owners::find($owner_id);
                                     $owner->referred_by = $ledger->owner_id;
                                     $owner->is_referee = 1;
                                     $owner->save();
-                                    $owner = \Enfa\Owner::find($owner_id);
+                                    $owner = \Enfa\Owners::find($owner_id);
                                     $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                     $response_array = array(
                                         'success' => true,
@@ -433,7 +433,7 @@ public function ownerVerify() {
                                     $response_code = 200;
                                 }
                             } else {
-                                $owner = \Enfa\Owner::find($owner_id);
+                                $owner = \Enfa\Owners::find($owner_id);
                                 $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                 $response_array = array(
                                     'success' => false,
@@ -462,7 +462,7 @@ public function ownerVerify() {
                                 $response_code = 200;
                             }
                         } else {
-                            $owner = \Enfa\Owner::find($owner_id);
+                            $owner = \Enfa\Owners::find($owner_id);
                             $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                             $response_array = array(
                                 'success' => false,
@@ -491,10 +491,10 @@ public function ownerVerify() {
                             $response_code = 200;
                         }
                     } else {
-                        $owner = \Enfa\Owner::find($owner_id);
+                        $owner = \Enfa\Owners::find($owner_id);
                         $owner->is_referee = 1;
                         $owner->save();
-                        $owner = \Enfa\Owner::find($owner_id);
+                        $owner = \Enfa\Owners::find($owner_id);
                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                         $response_array = array(
                             'success' => true,
@@ -603,7 +603,7 @@ public function ownerVerify() {
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = \Enfa\Owner::find($owner_id);
+                                                        $owner = \Enfa\Owners::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
@@ -612,7 +612,7 @@ public function ownerVerify() {
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = \Enfa\Owner::find($owner_id);
+                                                        $owner = \Enfa\Owners::find($owner_id);
                                                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
@@ -677,7 +677,7 @@ public function ownerVerify() {
                                                         $user_promo_entry->user_id = $owner_id;
                                                         $user_promo_entry->save();
 
-                                                        $owner = \Enfa\Owner::find($owner_id);
+                                                        $owner = \Enfa\Owners::find($owner_id);
                                                         $owner->promo_count = $owner->promo_count + 1;
                                                         $owner->save();
 
@@ -686,7 +686,7 @@ public function ownerVerify() {
                                                         $request->promo_code = $promos->coupon_code;
                                                         $request->save();
 
-                                                        $owner = \Enfa\Owner::find($owner_id);
+                                                        $owner = \Enfa\Owners::find($owner_id);
                                                         $code_data = Ledger::where('owner_id', '=', $owner->id)->first();
                                                         $response_array = array(
                                                             'success' => true,
@@ -1117,7 +1117,7 @@ public function ownerVerify() {
                 $response_code = 200;
                 Log::error('Validation error during manual login for owner = ' . print_r($error_messages, true));
             } else {
-                if ($owner = \Enfa\Owner::where('email', '=', $email)->first()) {
+                if ($owner = \Enfa\Owners::where('email', '=', $email)->first()) {
                     if (Hash::check($password, $owner->password)) {
                         if ($login_by !== "manual") {
                             $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
@@ -1227,7 +1227,7 @@ public function ownerVerify() {
                 $response_array = array('success' => false, 'error' => 'Invalid Input', 'error_code' => 401, 'error_messages' => $error_messages);
                 $response_code = 200;
             } else {
-                if ($owner = \Enfa\Owner::where('social_unique_id', '=', $social_unique_id)->first()) {
+                if ($owner = \Enfa\Owners::where('social_unique_id', '=', $social_unique_id)->first()) {
                     if (!in_array($login_by, array('facebook', 'google'))) {
                         $response_array = array('success' => false, 'error' => 'Login by mismatch', 'error_code' => 417);
                         $response_code = 200;
@@ -1333,7 +1333,7 @@ public function ownerVerify() {
                     if (is_token_active($owner_data->token_expiry) || $is_admin) {
                         // Do necessary operations
 
-                        $owner = \Enfa\Owner::find($owner_data->id);
+                        $owner = \Enfa\Owners::find($owner_data->id);
                         $owner->address = $address;
                         $owner->state = $state;
                         $owner->zipcode = $zipcode;
@@ -2106,7 +2106,7 @@ public function ownerVerify() {
                         $data['is_default'] = $default;
                         array_push($payments, $data);
                     }
-                    $owner = \Enfa\Owner::find($owner_id);
+                    $owner = \Enfa\Owners::find($owner_id);
 
                     $response_array = array(
                         'success' => true,
@@ -2518,7 +2518,7 @@ public function ownerVerify() {
                         if ($old_password != "" || $old_password != NULL) {
                             if (Hash::check($old_password, $owner_data->password)) {
                                 // Do necessary operations
-                                $owner = \Enfa\Owner::find($owner_id);
+                                $owner = \Enfa\Owners::find($owner_id);
                                 if ($first_name) {
                                     $owner->first_name = $first_name;
                                 }
@@ -2656,7 +2656,7 @@ public function ownerVerify() {
                         }
                     } else {
                         // Do necessary operations
-                        $owner = \Enfa\Owner::find($owner_id);
+                        $owner = \Enfa\Owners::find($owner_id);
                         if ($first_name) {
                             $owner->first_name = $first_name;
                         }
@@ -2842,7 +2842,7 @@ public function ownerVerify() {
                         }
                     }
                     // Do necessary operations
-                    $owner = \Enfa\Owner::find($owner_id);
+                    $owner = \Enfa\Owners::find($owner_id);
                     $payment_data = \Enfa\Payment::where('owner_id', $owner_id)->orderBy('is_default', 'DESC')->get();
                     foreach ($payment_data as $data1) {
                         $default = $data1->is_default;
@@ -3055,7 +3055,7 @@ public function ownerVerify() {
                                 );
                             } catch (Stripe_InvalidRequestError $e) {
                                 // Invalid parameters were supplied to Stripe's API
-                                $ownr = \Enfa\Owner::find($owner_id);
+                                $ownr = \Enfa\Owners::find($owner_id);
                                 $ownr->debt = $total;
                                 $ownr->save();
                                 $response_array = array('error' => $e->getMessage());
@@ -3303,7 +3303,7 @@ public function ownerVerify() {
 
                     foreach ($phones as $key) {
 
-                        $owner = \Enfa\Owner::where('id', $owner_id)->first();
+                        $owner = \Enfa\Owners::where('id', $owner_id)->first();
                         $secret = str_random(6);
 
                         $request = \Enfa\Requests::where('id', $request_id)->first();
