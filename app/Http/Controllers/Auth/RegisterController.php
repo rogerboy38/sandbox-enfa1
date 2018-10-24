@@ -2,12 +2,15 @@
 
 namespace Enfa\Http\Controllers\Auth;
 
-use Enfa\Users;
+use Enfa\User;
+use Validator;
 use Enfa\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 
+/**
+ * Class RegisterController
+ * @package %%NAMESPACE%%\Http\Controllers\Auth
+ */
 class RegisterController extends Controller
 {
     /*
@@ -22,12 +25,19 @@ class RegisterController extends Controller
     */
 
     use RegistersUsers;
-    public function ShowRegistrationForm ( )
-    {
-      return view('auth.register');
-    }
+
     /**
-     * Where to redirect users after registration.
+     * Show the application registration form.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showRegistrationForm()
+    {
+        return view('adminlte::auth.register');
+    }
+
+    /**
+     * Where to redirect users after login / registration.
      *
      * @var string
      */
@@ -52,10 +62,11 @@ class RegisterController extends Controller
     protected function validator(array $data)
     {
         return Validator::make($data, [
-            'user_id' => 'required|string|max:255|unique:users',
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'name'     => 'required|max:255',
+            'username' => 'sometimes|required|max:255|unique:users',
+            'email'    => 'required|email|max:255|unique:users',
+            'password' => 'required|min:6|confirmed',
+            'terms'    => 'required',
         ]);
     }
 
@@ -63,15 +74,18 @@ class RegisterController extends Controller
      * Create a new user instance after a valid registration.
      *
      * @param  array  $data
-     * @return \Enfa\User
+     * @return User
      */
     protected function create(array $data)
     {
-        return Users::create([
-            'user_id' => $data['user_id'],
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-        ]);
+        $fields = [
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => bcrypt($data['password']),
+        ];
+        if (config('auth.providers.users.field', 'email') === 'username' && isset($data['username'])) {
+            $fields['username'] = $data['username'];
+        }
+        return \Enfa\User::create($fields);
     }
 }

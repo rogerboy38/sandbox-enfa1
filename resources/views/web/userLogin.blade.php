@@ -19,10 +19,10 @@
             $favicon = '/images/' . $themes->favicon;
         }
         if ($logo == '/uploads/') {
-            $logo = '/image/logo.png';
+            $logo = './images/logo.png';
         }
         if ($favicon == '/uploads/') {
-            $favicon = '/image/favicon.ico';
+            $favicon = './image/favicon.ico';
         }
         ?>
 
@@ -56,6 +56,8 @@
                 <a href="<?php echo web_url(); ?>" class="col-md-2 col-xs-12"><img class="imghome" src="http://enfadelivery.com/images/logo.png" alt="" style="width: 55%; padding-top:20px;"></a>
                 <!--<form class="form-login" action="{{URL::Route('userVerify')}}" method="post">-->
                 <form class="form-login" action="{{'user/verify'}}" method="post">
+                  <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                  @csrf
                     <h2 class="form-login-heading">Inicia Sesion en userLogin</h2>
                     <div class="login-wrap">
                         <span id="no_email_error1" style="display: none"> </span>

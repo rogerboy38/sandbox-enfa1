@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Enfa\Console\Commands;
 
 use Illuminate\Console\Command;
 use File;

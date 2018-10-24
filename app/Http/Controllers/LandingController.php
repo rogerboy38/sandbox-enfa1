@@ -33,6 +33,7 @@ class LandingController extends Controller
 	 * @var string
 	 */
 	protected $redirectTo = '/userAll';
+  // 	protected $redirectTo = '/marketplace'; aqui enviar cuando logea
 
 	/**
 	 * Create a new controller instance.
@@ -52,27 +53,28 @@ class LandingController extends Controller
 	protected function validator(array $data)
 	{
 			return Validator::make($data, [
-					'user_id' => 'required|string|max:255|unique:users',
+					'id' => 'required|string|max:255|unique:users',
 					'name' => 'required|string|max:255',
 					'email' => 'required|string|email|max:255|unique:users',
 					'password' => 'required|string|min:6|confirmed',
 			]);
 	}
 	/**
-	 * Create a new user instance after a valid registration.
+	 * Create a new user instance after a valid registration. aqui colocar si es transportista conductor o envia carga
 	 *
 	 * @param  array  $data
 	 * @return \Enfa\User
 	 */
 	protected function create(array $data)
 	{
-			return \Enfa\Users::create([
-					'user_id' => $data['user_id'],
+		/*	return \Enfa\Users::create([
+					'user_id' => $data['id'],
 					'name' => $data['name'],
 					'email' => $data['email'],
 					'password' => Hash::make($data['password']),
 			]);
-
+*/
+return 'en crear user';
 	}
 
   public function getOrigenDestino() {

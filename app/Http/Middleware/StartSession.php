@@ -1,7 +1,7 @@
 <?php
 
-namespace Illuminate\Session\Middleware;
-
+namespace Enfa\Http\Middleware;
+//namespace Illuminate\Session\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;

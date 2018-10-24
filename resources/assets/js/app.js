@@ -9,8 +9,20 @@ require('./bootstrap');
 require('./form');
 require('./modal');
 
-window.Vue = require('vue');
 
+window.Vue = require('vue');
+import VueRouter from 'vue-router'
+Vue.use(VueRouter)
+let routes =[
+  { path '/login' , Component: require('./components/Login.vue') }
+  { path '/register', Component: require ('./components/Register.vue') }
+  { path '/profile' , Component: require ('./components/Profile.vue') }
+  { path '/dashboard', Component: require ('./components/Dashboard.vue') }
+]
+
+const router = new VueRouter({
+  routes : routes
+})
 /**
  * Next, we will create a fresh Vue application instance and attach it to
  * the page. Then, you may begin adding components to this application
@@ -21,4 +33,5 @@ Vue.component('example-component', require('./components/ExampleComponent.vue'))
 
 const app = new Vue({
     el: '#app'
+    router
 });

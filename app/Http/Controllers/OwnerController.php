@@ -1,7 +1,7 @@
 <?php
 namespace Enfa\Http\Controllers;
 
-use App\Http\Requests\ProductCreateRequest;
+use Enfa\Http\Requests\ProductCreateRequest;
 
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;

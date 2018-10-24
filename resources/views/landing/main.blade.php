@@ -13,6 +13,7 @@
   <section class="welcome-bg">
     <img class="welcome-bg -img img-fluid"src="./src/images/bg-2.jpg" alt="">
     <div class="row align-items-center">
+      
       <div class="col title">
         <p>Envía o transporta tu carga</p>
         <h1>Encuentra o envia tu <span style="color:#FFA000">carga</span> con nosotros.</h1>

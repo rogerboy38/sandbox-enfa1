@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'http://localhost/enfadelivery/public'),
 
     /*
     |--------------------------------------------------------------------------
@@ -153,6 +153,8 @@ return [
         Collective\Html\HtmlServiceProvider::class,
         Enfa\Providers\AppServiceProvider::class,
         Laraveles\Spanish\SpanishServiceProvider::class,
+        Collective\Html\HtmlServiceProvider::class,
+
 
         /*
          * Package Service Providers...
@@ -161,7 +163,7 @@ return [
         /*
          * Application Service Providers...
          */
-        //Enfa\Providers\AppServiceProvider::class,
+
         Enfa\Providers\AuthServiceProvider::class,
         // Enfa\Providers\BroadcastServiceProvider::class,
         Enfa\Providers\EventServiceProvider::class,

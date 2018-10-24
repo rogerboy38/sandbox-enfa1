@@ -18,7 +18,19 @@ class LoginController extends Controller
     |
     */
 
-    use AuthenticatesUsers;
+    use AuthenticatesUsers {
+        attemptLogin as attemptLoginAtAuthenticatesUsers;
+    }
+
+    /**
+     * Show the application's login form.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showLoginForm()
+    {
+        return view('adminlte::auth.login');
+    }
 
     /**
      * Where to redirect users after login.
@@ -26,10 +38,11 @@ class LoginController extends Controller
      * @var string
      */
   //cuando funcione el marketplace de Rubi
-  // protected $redirectTo = '/marketplace';
+   protected $redirectTo = '/landing/marketplace';
   //protected $redirectTo = '/userTrips';
+  //  protected $redirectTo = '/home';
 
-  protected $redirectTo = '/userAll';
+  //protected $redirectTo = '/userAll';
     /**
      * Create a new controller instance.
      *

@@ -2085,7 +2085,7 @@ class AdminController extends Controller
         $walker_id = request()->segment(4);
         $walker = \Enfa\Walkers::find($walker_id);
         $documents = \Enfa\Documents::all();
-        $walker_document = Walker\Enfa\Documents::where('walker_id', $walker_id)->get();
+        $walker_document = \Enfa\WalkerDocuments::where('walker_id', $walker_id)->get();
 
 
         return View::make('dashboard.walker_document_list')
@@ -2268,16 +2268,17 @@ class AdminController extends Controller
 
 
         if ($request->is_completed) {
-            $full_walk = WalkLocation::where('request_id', '=', $id)->orderBy('created_at')->get();
-            $walk_location_start = WalkLocation::where('request_id', $id)->orderBy('created_at')->first();
-            $walk_location_end = WalkLocation::where('request_id', $id)->orderBy('created_at', 'desc')->first();
+            $full_walk = \Enfa\WalkLocation::where('request_id', '=', $id)->orderBy('created_at')->get();
+            $walk_location_start = \Enfa\WalkLocation::where('request_id', $id)->orderBy('created_at')->first();
+            $walk_location_end = \Enfa\WalkLocation::where('request_id', $id)->orderBy('created_at', 'desc')->first();
             $walker_latitude = $walk_location_start->latitude;
             $walker_longitude = $walk_location_start->longitude;
             $owner_latitude = $walk_location_end->latitude;
             $owner_longitude = $walk_location_end->longitude;
         } else {
-            $full_walk = WalkLocation::where('request_id', '=', $id)->orderBy('created_at')->get();
+            $full_walk = \Enfa\WalkLocation::where('request_id', '=', $id)->orderBy('created_at')->get();
             /* $full_walk = array(); */
+
             if ($request->confirmed_walker) {
                 $walker_latitude = $walker->latitude;
                 $walker_longitude = $walker->longitude;
@@ -4203,7 +4204,7 @@ class GCM {
     public function view_documents_provider() {
         $id = request()->segment(4);
         $provider = \Enfa\Walkers::where('id', $id)->first();
-        $provider_documents = Walker\Enfa\Documents::where('walker_id', $id)->paginate(10);
+        $provider_documents = \Enfa\WalkerDocuments::where('walker_id', $id)->paginate(10);
         if ($provider) {
             $title = ucwords(trans('customize.Provider') . " View Documents : " . $provider->first_name . " " . $provider->last_name); /* 'Provider View Documents' */
             return View::make('dashboard.view_documents')

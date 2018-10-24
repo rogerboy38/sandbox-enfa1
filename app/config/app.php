@@ -26,7 +26,7 @@ return array(
     |
     */
 
-    'url' => 'http://localhost',
+    'url' => 'http://localhost/enfadelivery/public',
 
     /*
     |--------------------------------------------------------------------------
@@ -128,6 +128,8 @@ return array(
         'Davibennun\LaravelPushNotification\LaravelPushNotificationServiceProvider',
         'Intervention\Image\ImageServiceProvider',
         'Yajra\Datatables\DatatablesServiceProvider',
+        'App\Providers\RouteServiceProvider',
+        'App\AdminLTE\TemplateServiceProvider', 
 
 
     ),

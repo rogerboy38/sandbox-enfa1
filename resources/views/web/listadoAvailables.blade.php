@@ -26,7 +26,7 @@
 			language: {
 				"url": '{!! asset('Themes/enfatheme/lang/en/latino.json') !!}'
 				},
-			 ajax: '{{ url('index') }}',
+			 ajax: '{{ url('test') }}',
 			columns:[
 				{ data: 'id', name: 'id' },
 				{ data: 'status', name: 'status' },

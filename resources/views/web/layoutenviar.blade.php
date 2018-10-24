@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
  <!-- HEAD -->
-<head>
-    @include('landing.marketplaceHead')
-</head>
+
+@section('landing.marketplaceHead')
+	Home
+@endsection
 <!-- END HEAD -->
 <body>
 
@@ -18,7 +19,7 @@
 
       @include('landing.form.content')
       @include('web.listadoAvailables')
-    
+
 
       </section>
     <!-- END MAIN -->

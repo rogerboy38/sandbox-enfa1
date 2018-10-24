@@ -208,7 +208,7 @@
                                 <!--<li role="presentation"><a role="menuitem" id="avail" tabindex="-1" href="{{ URL::Route('AdminProviderAvailability', $walker->id) }}">View Calendar</a></li>-->
                                 <?php /* } */ ?>
                                 <?php
-                                $walker_doc = \Enfa\WalkerDocument::where('walker_id', $walker->id)->first();
+                                $walker_doc = \Enfa\WalkerDocuments::where('walker_id', $walker->id)->first();
                                 if ($walker_doc != NULL) {
                                     ?>
                                     <li role="presentation"><a id="view_walker_doc" role="menuitem" tabindex="-1" href="{{ URL::Route('AdminViewProviderDoc', $walker->id) }}">View Documents</a></li>

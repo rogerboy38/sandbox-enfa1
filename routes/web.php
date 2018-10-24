@@ -10,6 +10,7 @@
 | contains the "web" middleware group. Now create something great!
 |
 */
+
 Route::group(['middleware'=>'web'], function (){
   //Route::get('/', function () {
   //  return redirect('//public/landing');
@@ -61,7 +62,9 @@ Route::get('privacidad','LandingController@privacidad');
 Route::get('/home', 'HomeController@index')->name('home');
 });
 // hasta que se libere layout de Marketplace
-//Route::get('landing/marketplace', 'HomeController@index')->name('marketplace');
+Route::post('/marketplace', 'HomeController@index')->name('marketplace');
+Route::get('/landing/marketplace', 'MarketplaceController@index')->name('marketplace');
+Route::post('/landing/marketplace', 'MarketplaceController@index')->name('marketplace');
 Route::get('/userTrips', 'HomeController@userHome')->name('userTrips');
 
 //Route::get('/providerTrips', 'HomeController@providerHome')->name('providerTrips');
@@ -341,6 +344,7 @@ Route::post('/admin/verify', array('as' => 'AdminVerify', 'uses' => 'AdminContro
 Route::post('/provider/verify', array('as' => 'ProviderVerify', 'uses' => 'WebProviderController@providerVerify'));
 Route::post('/walker/verify', array('as' => 'WalkerVerify', 'uses' => 'WalkerController@walkerVerify'));
 Route::post('/owner/verify', array('as' => 'OwnerVerify', 'uses' => 'OwnerController@ownerVerify'));
+Route::any('/user/verify', array('as' => 'UserVerify', 'uses' => 'WebUserController@userVerify'))->name('userVerify');
 
 Route::get('/admin/logout', array('as' => 'AdminLogout', 'uses' => 'AdminController@logout'));
 Route::get('/provider/logout', array('as' => 'ProviderLogout', 'uses' => 'WebProviderController@logout'));
@@ -528,11 +532,12 @@ Route::get('/', 'WebController@index');
 //Route::get('/provider/signin', array('as' => 'ProviderLogin', 'uses' =>'LandingController@providerLogin'));
 //Route::post('ProviderLogin','WebUserController@UserVerify');
 //Route::get('providerLogged','WebProviderController@providerDashboard');
+Route::get('/user/signin', array('as' => 'UserLogin', 'uses' =>'MarketplaceController@userLogin'));
 
 
 
 Route::get('/usuarios/registro', array('as' => '/user/signup', 'uses' => 'WebUserController@userRegister'));
-
+Route::get('/usuarios/entrar', array('as' => '/user/signin', 'uses' => 'MarketplaceController@userLogin'));
 Route::post('/user/save', array('as' => '/user/save', 'uses' => 'WebUserController@userSave'));
 
 
@@ -543,8 +548,9 @@ Route::post('/user/forgot-password', array('as' => '/user/forgot-password', 'use
 Route::get('/user/logout', array('as' => '/user/logout', 'uses' => 'WebUserController@userLogout'));
 
 Route::post('/user/verify', array('as' => 'userVerify', 'uses' => 'WebUserController@userVerify'));
-
-Route::get('/user/trips', array('as' => '/user/trips', 'uses' => 'WebUserController@userTrips'));
+Route::post('/usuarios/user/verify', array('as' => '/user/verify', 'uses' => 'WebUserController@userVerify'));
+//Route::get('/user/trips', array('as' => '/user/trips', 'uses' => 'WebUserController@userTrips'));
+Route::get('/user/trips', array('as' => '/user/trips', 'uses' => 'MarketplaceController@userTrips'));
 // aqui revisar si pasa el id quitar la ?
 Route::get('/user/trip/status/{id?}', array('as' => '/user/trip/status', 'uses' => 'WebUserController@userTripStatus'));
 
@@ -757,3 +763,27 @@ Route::get('/install/complete', 'InstallerController@finish_install');
 Route::post('user/fare', 'DogController@fare_calculator');
 
 Route::get('token_braintree', array('as' => 'token_braintree', 'uses' => 'ApplicationController@token_braintree'));
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::group(['middleware' => 'auth'], function () {
+    //    Route::get('/link1', function ()    {
+//        // Uses Auth Middleware
+//    });
+
+    //Please do not remove this if you want adminlte:route and adminlte:link commands to works correctly.
+    #adminlte_routes
+});

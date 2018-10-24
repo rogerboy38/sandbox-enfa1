@@ -1,6 +1,6 @@
 <?php
 namespace Enfa\Http\Controllers;
-use App\Http\Requests\ProductCreateRequest;
+use Enfa\Http\Requests\ProductCreateRequest;
 
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;
@@ -18,9 +18,10 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Database\Eloquent\Model;
-use App\Product;
+use Enfa\Product;
 use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
 use Closure;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Enfa\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
@@ -34,8 +35,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
-use LogManager as Log;
-
+use Redirect;
 
 
 //use Theme as Theme;
@@ -43,7 +43,7 @@ use LogManager as Log;
 use Enfa\models\owners as owners;
 
 
-class WebUserController extends Controller {
+class MarketplaceController extends Controller {
 
     /**
      * Display a listing of the resource.
@@ -94,6 +94,8 @@ class WebUserController extends Controller {
             }
         }, array('except' => array(
                 'userLogin',
+                'login',
+                'register',
                 'userVerify',
                 'userForgotPassword',
                 'userRegister',
@@ -160,7 +162,7 @@ class WebUserController extends Controller {
                             "card" => $payment_token,
                             "description" => $owner_data->email)
                 );
-                LogManager::info('key = ' . print_r($customer, true));
+                Log::info('key = ' . print_r($customer, true));
 
                 $last_four = substr(Input::get('number'), -4);
                 if ($customer) {
@@ -260,11 +262,12 @@ class WebUserController extends Controller {
 
         $message = "You has successfully rated the driver.";
         $type = "success";
-        return Redirect::to('/user/trips')->with('message', $message)->with('type', $type);
+        return Redirect::to('/landing/marketplace')->with('message', $message)->with('type', $type);
     }
-
+//Ojo si da click en entrar lo mandara a index y a landing/marketplace ahora esta a user/verify
     public function index() {
-        //return Redirect::to('/user/signin');
+
+        return Redirect::to('/user/verify');
     }
 
     public function userLogin() {
@@ -402,7 +405,7 @@ class WebUserController extends Controller {
                 $payment_options['paypal'] = 0;
             }
 
-            LogManager::info('payment_options = ' . print_r($payment_options, true));
+            Log::info('payment_options = ' . print_r($payment_options, true));
 
             /* $var = Keywords::where('id', 4)->first(); */
 
@@ -444,7 +447,7 @@ class WebUserController extends Controller {
 
 
 
-            $types = ProviderType::where('is_visible', '=', 1)->get();
+            $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
             return View::make('web.userRequestTrip2')
                             /* ->with('title', 'Request ' . $var->keyword . '') */
                             ->with('title', 'Request ' . Config::get('app.generic_keywords.Trip') . '')
@@ -456,7 +459,7 @@ class WebUserController extends Controller {
                             ->with('favoritos',$option);
         } else {
             $owner = \Enfa\Owners::find($owner_id);
-            $type = ProviderType::find($current_request->type);
+            $type = \Enfa\ProviderType::find($current_request->type);
             $status = 0;
             $payment_mode = $current_request->payment_mode;
             if ($current_request->is_walker_rated) {
@@ -577,11 +580,11 @@ class WebUserController extends Controller {
                 $payment_options['paypal'] = 0;
             }
 
-            LogManager::info('payment_options = ' . print_r($payment_options, true));
+            Log::info('payment_options = ' . print_r($payment_options, true));
 
             /* $var = Keywords::where('id', 4)->first(); */
 
-            $types = ProviderType::where('is_visible', '=', 1)->get();
+            $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
             return View::make('web.userRequestTrip')
                             /* ->with('title', 'Request ' . $var->keyword . '') */
                             ->with('title', 'Request ' . Config::get('app.generic_keywords.Trip') . '')
@@ -592,7 +595,7 @@ class WebUserController extends Controller {
                             ->with('page', 'request-trip');
         } else {
             $owner = \Enfa\Owners::find($owner_id);
-            $type = ProviderType::find($current_request->type);
+            $type = \Enfa\ProviderType::find($current_request->type);
             $status = 0;
             $payment_mode = $current_request->payment_mode;
             if ($current_request->is_walker_rated) {
@@ -672,7 +675,7 @@ class WebUserController extends Controller {
         $request_id = Request::segment(3);
         $request = \Enfa\Requests::where('id', $request_id)->first();
         $reqserv = RequestServices::where('request_id', $request_id)->first();
-        $typess = ProviderType::where('id', $reqserv->type)->first();
+        $typess = \Enfa\ProviderType::where('id', $reqserv->type)->first();
 
         $total_amount = $request->total;
         $service_name = $typess->name;
@@ -728,7 +731,7 @@ class WebUserController extends Controller {
         $adaptivePaymentsService = new AdaptivePaymentsService($sdkConfig);
         $payResponse = $adaptivePaymentsService->Pay($payRequest);
 
-        LogManager::info('payResponse = ' . print_r($payResponse, true));
+        Log::info('payResponse = ' . print_r($payResponse, true));
         return Redirect::to('userpaypalstatus');
     }
 
@@ -750,8 +753,8 @@ class WebUserController extends Controller {
         $adaptivePaymentsService = new AdaptivePaymentsService($sdkConfig);
         $paymentDetailsResponse = $adaptivePaymentsService->PaymentDetails($paymentDetailsRequest);
 
-        LogManager::info('paymentDetailsResponse = ' . print_r($paymentDetailsResponse, true));
-        LogManager::info('payKey = ' . print_r($paymentDetailsResponse->{'payKey'}, true));
+        Log::info('paymentDetailsResponse = ' . print_r($paymentDetailsResponse, true));
+        Log::info('payKey = ' . print_r($paymentDetailsResponse->{'payKey'}, true));
         $request->payment_id = $paymentDetailsResponse->{'payKey'};
         $request->is_paid = 1;
         $request->save();
@@ -788,7 +791,7 @@ class WebUserController extends Controller {
         {
             $fare=35;
         }
-       /* $request_typ = ProviderType::where('id', '=', $type)->first();
+       /* $request_typ = \Enfa\ProviderType::where('id', '=', $type)->first();
         $setbase_distance = $request_typ->base_distance;
         $setbase_price = $request_typ->base_price;
         $setdistance_price = $request_typ->price_per_unit_distance;
@@ -796,7 +799,7 @@ class WebUserController extends Controller {
 
         /* $json_resp = file_get_contents('http://maps.googleapis.com/maps/api/distancematrix/json?origins=' . $latitude . ',' . $longitude . '&destinations=' . $d_latitude . ',' . $d_longitude); */
         /* $data = json_decode($json_resp);
-          LogManager::info('data = ' . print_r($data, true));
+          Log::info('data = ' . print_r($data, true));
 
 
           $distance = $data->rows[0]->elements[0]->distance->value;
@@ -806,7 +809,7 @@ class WebUserController extends Controller {
         $settings = \Enfa\Settings::where('key', 'default_distance_unit')->first();
         $unit = $settings->value;
         $distance = get_dist($latitude, $longitude, $d_latitude, $d_longitude);
-        LogManager::info('data = ' . print_r($distance, true));
+        Log::info('data = ' . print_r($distance, true));
 
         if ($unit == 0) {
             $distanceNew = $distance * 0.001;
@@ -900,7 +903,7 @@ class WebUserController extends Controller {
             $swap = new \Swap\Swap($yahooProvider);
             $rate = $swap->quote("USD/" . $currency_sel);
             $rate = json_decode($rate, true);
-            LogManager::info($rate);
+            Log::info($rate);
             $total = $total * $rate;
         }
 
@@ -925,12 +928,12 @@ class WebUserController extends Controller {
 
         $json_resp = file_get_contents('http://maps.googleapis.com/maps/api/distancematrix/json?origins=' . $latitude . ',' . $longitude . '&destinations=' . $d_latitude . ',' . $d_longitude);
         $data = json_decode($json_resp);
-        LogManager::info('data = ' . print_r($data, true));
+        Log::info('data = ' . print_r($data, true));
 
         $distance = $data->rows[0]->elements[0]->distance->value;
 
         $time = $data->rows[0]->elements[0]->duration->text;
-        LogManager::info('data = ' . print_r($time, true));
+        Log::info('data = ' . print_r($time, true));
 
         $status = 1;
         return Response::json(array('success' => true, 'eta' => $time));
@@ -985,7 +988,7 @@ class WebUserController extends Controller {
                 $type = Input::get('type');
                 if (!$type) {
                     // choose default type
-                    $provider_type = ProviderType::where('is_default', 1)->first();
+                    $provider_type = \Enfa\ProviderType::where('is_default', 1)->first();
 
                     if (!$provider_type) {
                         $type = 1;
@@ -1005,12 +1008,12 @@ class WebUserController extends Controller {
                 $message = "No " . Config::get('app.generic_keywords.Provider') . " found matching the service type.";
             } else {
 
-                LogManager::info('typewalkers = ' . print_r($typewalkers, true));
+                Log::info('typewalkers = ' . print_r($typewalkers, true));
                 foreach ($typewalkers as $key) {
                     $types[] = $key->provider_id;
                 }
                 $typestring = implode(",", $types);
-                LogManager::info('typestring = ' . print_r($typestring, true));
+                Log::info('typestring = ' . print_r($typestring, true));
 
                 if ($typestring == '') {
                     /* $message = "No " . $var->keyword . " found matching the service type."; */
@@ -1280,7 +1283,7 @@ $conn->close();
         } else if ($validatorPhone->fails()) {
             return Redirect::to('user/signup')->with('error', 'Invalid Phone Number Format');
         } else {
-            if (Owner::where('email', $email)->count() == 0) {
+            if (\Enfa\Owner::where('email', $email)->count() == 0) {
                 $owner = new Owner;
                 $owner->first_name = $first_name;
                 $owner->last_name = $last_name;
@@ -1303,17 +1306,17 @@ $conn->close();
                 }
                 $referral_code1 .= $owner->id;
                 /* Referral entry */
-                $ledger = new Ledger;
+                $ledger = new \Enfa\Ledger;
                 $ledger->owner_id = $owner->id;
                 $ledger->referral_code = $referral_code1;
                 $ledger->save();
                 if ($referral_code != "") {
-                    if ($ledger = Ledger::where('referral_code', $referral_code)->first()) {
+                    if ($ledger = \Enfa\Ledger::where('referral_code', $referral_code)->first()) {
                         $referred_by = $ledger->owner_id;
                         /* $settings = \Enfa\Settings::where('key', 'default_referral_bonus')->first();
                           $referral_bonus = $settings->value;
 
-                          $ledger = Ledger::find($ledger->id);
+                          $ledger = \Enfa\Ledger::find($ledger->id);
                           $ledger->total_referrals = $ledger->total_referrals + 1;
                           $ledger->amount_earned = $ledger->amount_earned + $referral_bonus;
                           $ledger->save(); */
@@ -1323,13 +1326,13 @@ $conn->close();
                         $settings = \Enfa\Settings::where('key', 'default_referral_bonus_to_refereel')->first();
                         $referral = $settings->value;
 
-                        $ledger = Ledger::find($ledger->id);
+                        $ledger = \Enfa\Ledger::find($ledger->id);
                         $ledger->total_referrals = $ledger->total_referrals + 1;
                         $ledger->amount_earned = $ledger->amount_earned + $refered_user;
                         $ledger->save();
 
-                        $ledger1 = Ledger::where('owner_id', $owner->id)->first();
-                        $ledger1 = Ledger::find($ledger1->id);
+                        $ledger1 = \Enfa\Ledger::where('owner_id', $owner->id)->first();
+                        $ledger1 = \Enfa\Ledger::find($ledger1->id);
                         $ledger1->amount_earned = $ledger1->amount_earned + $referral;
                         $ledger1->save();
 
@@ -1400,9 +1403,11 @@ $conn->close();
             if (Session::has('pre_login_url')) {
                 $url = Session::get('pre_login_url');
                 Session::forget('pre_login_url');
-                return Redirect::to($url);
+                //return Redirect::to($url);
+                return ('en Marketplace enviando 1 a user/trip');
             } else {
-                return Redirect::to('user/trips');
+                //return Redirect::to('user/trip');
+                return ('en Marketplace enviando 2 a user/trip');
             }
         } else {
             return Redirect::to('usuarios/entrar')->with('error', 'Invalid email and password');
@@ -1500,16 +1505,16 @@ $conn->close();
         $requests = DB::table('requests')
                 ->join('owners', 'requests.owner_id', '=', 'owners.id')
                 ->where('is_completed', 1)
-                ->leftJoin('walker', 'walker.id', '=', 'requests.confirmed_walker')
-                ->leftJoin('walker_services', 'walker.id', '=', 'walker_services.provider_id')
-                ->leftJoin('walker_type', 'walker_type.id', '=', 'walker_services.type')
+                ->leftJoin('walkers', 'walkers.id', '=', 'requests.confirmed_walker')
+                ->leftJoin('walker_services', 'walkers.id', '=', 'walker_services.provider_id')
+                ->leftJoin('walker_types', 'walker_types.id', '=', 'walker_services.type')
                 ->orderBy('request_start_time', 'desc')
-                ->select('requests.id', 'request_start_time', 'walker.first_name', 'walker.last_name', 'requests.total as total', 'walker_type.name as type')
+                ->select('requests.id', 'request_start_time', 'walkers.first_name', 'walkers.last_name', 'requests.total as total', 'walker_types.name as type')
                 ->get();
 
         /* $var = Keywords::where('id', 4)->first(); */
-
-        return View::make('web.userTrips')
+        
+        return View::make('web.userMarketplace')
                         /* ->with('title', 'My ' . $var->keyword . 's') */
                         ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's')
                         ->with('requests', $requests);
@@ -1552,7 +1557,7 @@ $conn->close();
 
         if ($validator->fails()) {
             $error_messages = $validator->messages();
-            LogManager::info('picture type not valid. Error = ' . print_r($error_messages, true));
+            Log::info('picture type not valid. Error = ' . print_r($error_messages, true));
             return Redirect::to('/user/profile')->with('error', 'Invalid image format (Allowed formats jpeg,bmp and png)');
         } else {
 
@@ -1561,9 +1566,9 @@ $conn->close();
             if (Input::hasFile('picture')) {
                 if ($owner->picture != "") {
                     $path = $owner->picture;
-                    LogManager::info($path);
+                    Log::info($path);
                     $filename = basename($path);
-                    LogManager::info($filename);
+                    Log::info($filename);
                     unlink(public_path() . "/uploads/" . $filename);
                 }
                 // upload image
@@ -1652,7 +1657,7 @@ $conn->close();
     public function userPayments() {
         $owner_id = Session::get('user_id');
         $payments =  \Enfa\Payments::where('owner_id', $owner_id)->get();
-        $ledger = Ledger::where('owner_id', $owner_id)->first();
+        $ledger = \Enfa\Ledger::where('owner_id', $owner_id)->first();
 
         return View::make('web.userPayments')
                         ->with('title', 'Payments and Credits')
@@ -1663,7 +1668,7 @@ $conn->close();
     public function userPaymentsFB() {
         $owner_id = Session::get('user_id');
         $payments =  \Enfa\Payments::where('owner_id', $owner_id)->get();
-        $ledger = Ledger::where('owner_id', $owner_id)->first();
+        $ledger = \Enfa\Ledger::where('owner_id', $owner_id)->first();
 
         return View::make('web.userPaymentsFB')
                         ->with('title', 'Payments and Credits')
@@ -1685,12 +1690,12 @@ $conn->close();
     public function updateUserCode() {
         $owner_id = Session::get('user_id');
         $code = Input::get('code');
-        $code_count = Ledger::where('referral_code', '=', $code)->where('owner_id', '!=', $owner_id)->count();
+        $code_count = \Enfa\Ledger::where('referral_code', '=', $code)->where('owner_id', '!=', $owner_id)->count();
         if ($code_count) {
             $message = "This referral code is already in use. Please choose a new one";
             $type = "danger";
         } else {
-            $ledger = Ledger::where('owner_id', $owner_id)->first();
+            $ledger = \Enfa\Ledger::where('owner_id', $owner_id)->first();
             if ($ledger) {
                 $ledger->referral_code = $code;
                 $ledger->save();

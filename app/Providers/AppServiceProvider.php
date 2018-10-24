@@ -1,12 +1,9 @@
 <?php
+
 namespace Enfa\Providers;
 
-
 use Illuminate\Support\ServiceProvider;
-use Enfa\Validator\CustomValidator;
-use Illuminate\Http\Request;
-use Validator;
-
+use Laravel\Dusk\DuskServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,17 +11,10 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      *
      * @return void
-    */
+     */
     public function boot()
     {
-        //Validator::resolver(function($translator, $data, $rules, $messages)
-        //{
-        //    return new CustomValidator($translator, $data, $rules, $messages);
-        //});
-        //Bugsnag::registerCallback(function($report) {
-        //...
-        //});
-
+        //
     }
 
     /**
@@ -34,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        if ($this->app->environment('local', 'testing')) {
+            $this->app->register(DuskServiceProvider::class);
+        }
     }
 }

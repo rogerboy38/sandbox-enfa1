@@ -3,7 +3,7 @@
         <div class="col-sm-12 col-md-5 d-flex flex-column align-items-center justify-content-end -left">
 
             <strong>Iniciar Sesión</strong>
-            <form method="POST" action="{{ route('AllUsersLogin') }}" class="sign -in">
+            <form method="POST" action="{{ route('marketplace') }}" class="sign -in">
                   @csrf
 
                   <label for="email" class="col-sm-4 col-form-label text-md-right">{{ __('E-Mail Address') }}</label>
@@ -40,7 +40,7 @@
         <div class="d-none col-md-7 d-md-flex flex-column align-items-center justify-content-center -right">
             <div class="intro">
                 <p>Acceso a Usuarios de Enfadelivery</p>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut quis ante ut purus egestas feugiat id in turpis.</p>
+                <p>Una nueva forma de optimizar tus regresos.</p>
             </div>
         </div>
     </div>

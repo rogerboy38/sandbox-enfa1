@@ -33,7 +33,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/AllUsers';
+    protected $redirectTo = '/landing/marketplace';
 
     /**
      * Create a new controller instance.
