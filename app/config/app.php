@@ -26,7 +26,7 @@ return array(
     |
     */
 
-    'url' => 'http://localhost',
+    'url' => 'http://localhost/enfadelivery/public',
 
     /*
     |--------------------------------------------------------------------------
@@ -127,6 +127,10 @@ return array(
         'Raahul\LarryFour\LarryFourServiceProvider',
         'Davibennun\LaravelPushNotification\LaravelPushNotificationServiceProvider',
         'Intervention\Image\ImageServiceProvider',
+        'Yajra\Datatables\DatatablesServiceProvider',
+        'App\Providers\RouteServiceProvider',
+        'App\AdminLTE\TemplateServiceProvider', 
+
 
     ),
 
@@ -194,9 +198,10 @@ return array(
         'URL'               => 'Illuminate\Support\Facades\URL',
         'Validator'         => 'Illuminate\Support\Facades\Validator',
         'View'              => 'Illuminate\Support\Facades\View',
-        'AWS' => 'Aws\Laravel\AwsFacade',
-        'PushNotification' => 'Davibennun\LaravelPushNotification\Facades\PushNotification',
-        'Image' => 'Intervention\Image\Facades\Image',
+        'Datatables'        => 'Yajra\Datatables\Facades\Datatables',
+        'AWS'               => 'Aws\Laravel\AwsFacade',
+        'PushNotification'  => 'Davibennun\LaravelPushNotification\Facades\PushNotification',
+        'Image'             => 'Intervention\Image\Facades\Image',
     ),
     'menu_titles' => array(
         'admin_control' => '',

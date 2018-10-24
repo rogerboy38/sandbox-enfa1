@@ -1,7 +1,7 @@
 <form class="row m-0">
-            <div class="col-xs-12  col-md-3">
+            <!--<div class="col-xs-12  col-md-3">
               <label for="">Origen</label>
-              <input type="text" class="form-control" value={!!$origen[1]!!}>
+              <input type="text" class="form-control" value={!!$origen!!}>
             </div>
             <div class="col-xs-12  col-md-3">
               <label for="">Destino</label>
@@ -24,4 +24,6 @@
                 BUSCAR
               </button>
             </div>
+          -->
+            @include('landing.form.content')
 </form>

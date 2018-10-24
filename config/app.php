@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Enfadelivery'),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'http://localhost/enfadelivery/public'),
 
     /*
     |--------------------------------------------------------------------------
@@ -153,6 +153,8 @@ return [
         Collective\Html\HtmlServiceProvider::class,
         Enfa\Providers\AppServiceProvider::class,
         Laraveles\Spanish\SpanishServiceProvider::class,
+        Collective\Html\HtmlServiceProvider::class,
+
 
         /*
          * Package Service Providers...
@@ -161,13 +163,14 @@ return [
         /*
          * Application Service Providers...
          */
-        //Enfa\Providers\AppServiceProvider::class,
+
         Enfa\Providers\AuthServiceProvider::class,
         // Enfa\Providers\BroadcastServiceProvider::class,
         Enfa\Providers\EventServiceProvider::class,
         Enfa\Providers\RouteServiceProvider::class,
         Enfa\Providers\ListsWorkAround::class,
         Enfa\Providers\HelperServiceProvider::class,
+        Yajra\Datatables\DatatablesServiceProvider::class,
 
        // Enfa\Providers\ThemeServiceProvider::class,
 
@@ -226,6 +229,7 @@ return [
         'Theme' => Shipu\Themevel\Facades\Theme::class,
         'UserTrait' => Illuminate\Auth\UserTrait::class,
         'Log' => Illuminate\Log\LogManager::class,
+        'Datatables' => Yajra\Datatables\Datatables::class,
 
     ],
 

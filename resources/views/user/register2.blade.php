@@ -62,7 +62,7 @@
 
                 <div class="text-center">
                   <button type="submit" class="btn m-btn--pill m-btn--air btn-warning -edit">
-                      {{ __('Sign Up') }}
+                      {{ __('Registrarme') }}
                   </button>
 
                 </div>
@@ -70,13 +70,13 @@
             </form>
             <div class="terms">
                 <input type="checkbox" aria-label="Checkbox for following text input">
-                <label for=""> I agree the <a href="">terms and conditions</a></label>
+                <label for=""> Estoy de acuerdo <a href="">con los terminos y condiciones</a></label>
             </div>
         </div>
         <div class="d-none col-md-7 d-md-flex flex-column align-items-center justify-content-center -right">
             <div class="intro">
-                <p>Join Our Community</p>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut quis ante ut purus egestas feugiat id in turpis.</p>
+                <p>Registro Usuarios Enfadelivery</p>
+                <p>Para Cotizar necesitamos tus datos, se te enviara un mail con tu cotizacion.</p>
             </div>
         </div>
     </div>

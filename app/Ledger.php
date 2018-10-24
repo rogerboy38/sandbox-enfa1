@@ -4,7 +4,7 @@ namespace Enfa;
 
 use Illuminate\Database\Eloquent\Model;
 
-class LogManager extends Model
+class Ledger extends Model
 {
     //
 }

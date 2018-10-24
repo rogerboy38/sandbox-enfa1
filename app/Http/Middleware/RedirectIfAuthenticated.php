@@ -18,10 +18,10 @@ class RedirectIfAuthenticated
     public function handle($request, Closure $next, $guard = null)
     {
         if (Auth::guard($guard)->check()) {
-            return redirect('/userAll');
+            return redirect('/landing/marketplace');
         }
 
         return $next($request);
-        
+
     }
 }

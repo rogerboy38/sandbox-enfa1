@@ -25,7 +25,8 @@
 @extends('provider.providerLayout')
 
 @section('body')
-<div class="row first-fold">
+<router-view></router-view>
+<div class="row first-fold" id='app'>
     <div class="landing">
         <div class="row uber-logo second-uber-logo">
             <div class="col-md-1 col-xs-12"><img src="/web/images/logo.png" alt=""></div>

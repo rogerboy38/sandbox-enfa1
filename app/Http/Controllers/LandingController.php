@@ -33,6 +33,7 @@ class LandingController extends Controller
 	 * @var string
 	 */
 	protected $redirectTo = '/userAll';
+  // 	protected $redirectTo = '/marketplace'; aqui enviar cuando logea
 
 	/**
 	 * Create a new controller instance.
@@ -52,28 +53,40 @@ class LandingController extends Controller
 	protected function validator(array $data)
 	{
 			return Validator::make($data, [
-					'user_id' => 'required|string|max:255|unique:users',
+					'id' => 'required|string|max:255|unique:users',
 					'name' => 'required|string|max:255',
 					'email' => 'required|string|email|max:255|unique:users',
 					'password' => 'required|string|min:6|confirmed',
 			]);
 	}
 	/**
-	 * Create a new user instance after a valid registration.
+	 * Create a new user instance after a valid registration. aqui colocar si es transportista conductor o envia carga
 	 *
 	 * @param  array  $data
 	 * @return \Enfa\User
 	 */
 	protected function create(array $data)
 	{
-			return \Enfa\Users::create([
-					'user_id' => $data['user_id'],
+		/*	return \Enfa\Users::create([
+					'user_id' => $data['id'],
 					'name' => $data['name'],
 					'email' => $data['email'],
 					'password' => Hash::make($data['password']),
 			]);
-
+*/
+return 'en crear user';
 	}
+
+  public function getOrigenDestino() {
+
+        $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
+        $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
+        $types_dim = \Enfa\ProviderType::where('is_visible', '=', 2)->get();
+        return View::make('landing.create', compact('cities',$cities, 'types',$types, 'types_dim',$types_dim));
+
+  }
+
+
 	/**
 	 * Display a listing of the resource.
 	 *
@@ -84,13 +97,15 @@ class LandingController extends Controller
 
     //$users = \Enfa\Users::All();
 		//return \View::make("landing.create", compact('users'));
-
+    $controller = new LandingController;
+    return $controller->getOrigenDestino();
+    /*
     $cities = \Enfa\Cities::all(['ZIPCode', 'city' , 'city_status'])->where('city_status','=', 600);
     $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
     $types_dim = \Enfa\ProviderType::where('is_visible', '=', 2)->get();
     return View::make('landing.create', compact('cities',$cities, 'types',$types, 'types_dim',$types_dim));
-
-	 	//return View::make('welcome');
+    */
+	 	//return $cities;
 	}
 
 public function marketplace()
@@ -215,7 +230,7 @@ public function marketplace()
         $owner_id = Session::get('user_id');
         $type = Input::get('type');
         $date= Input::get('date');
-        return \View::make("info.quieroEnviar")
+        return \View::make("web.layoutenviar")
         ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's')
         ->with('origen', $origen)
         ->with('destino', $destino)

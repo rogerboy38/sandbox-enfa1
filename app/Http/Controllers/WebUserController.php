@@ -1,7 +1,8 @@
 <?php
 namespace Enfa\Http\Controllers;
-use App\Http\Requests\ProductCreateRequest;
 
+use Enfa\Http\Requests\ProductCreateRequest;
+use Enfa\Http\Controllers\WebUserController;
 use PayPal\Rest\ApiContext;
 use PayPal\Auth\OAuthTokenCredential;
 use PayPal\Api\Amount;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Config;
 use Session;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Database\Eloquent\Model;
-use App\Product;
+use Enfa\Product;
 use Illuminate\Cookie\Middleware\EncryptCookies as Middleware;
 use Closure;
 use Illuminate\Support\Facades\Auth;
@@ -35,10 +36,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
-use App\User;
+use Enfa\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use \Input;
+
 
 
 //use Theme as Theme;
@@ -91,13 +93,15 @@ class WebUserController extends Controller {
                 return Redirect::to('/usuarios/entrar');
             } else {
                 $user_id = Session::get('user_id');
-                $owner = \Enfa\Owner::where('id', $user_id)->first();
+                $owner = \Enfa\Owners::where('id', $user_id)->first();
                 Session::put('user_name', $owner->first_name . " " . $owner->last_name);
                 Session::put('user_pic', $owner->picture);
 
             }
         }, array('except' => array(
                 'userLogin',
+                'login',
+                'register',
                 'userVerify',
                 'userForgotPassword',
                 'userRegister',
@@ -1411,6 +1415,7 @@ $conn->close();
 
     public function userVerify() {
       //return('en usuarios verify');
+      
         $email = Input::get('email');
         $password = Input::get('password');
         $owner = \Enfa\Owners::where('email', '=', $email)->first();
@@ -1422,6 +1427,7 @@ $conn->close();
                 $url = Session::get('pre_login_url');
                 Session::forget('pre_login_url');
                 return Redirect::to($url);
+
             } else {
                 return Redirect::to('user/trips');
             }
