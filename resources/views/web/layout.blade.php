@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -116,7 +116,22 @@
 
 
         @if (isset($page) && $page == 'request-trip')
-        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&sensor=false&libraries=places&region=MX"></script>
+        <!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&sensor=false&libraries=places&region=MX"></script> -->
+        <div id="map"></div>
+        <script>
+      var map;
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: -34.397, lng: 150.644},
+          zoom: 8
+        });
+      }
+    </script>
+        <script async defer
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAudIwG20OypHJzgENOLgG0iyfAxqnQuTM&callback=initMap&sensor=false&libraries=places&region=MX">
+        </script>
+
+
         <style>
             #map-canvas {
                 height: 300px;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,8 +106,9 @@
         <![endif]-->
 
 
-        @if (isset($page) && $page == 'request-trip') 
-        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&sensor=false&libraries=places&region=MX"></script>
+        @if (isset($page) && $page == 'request-trip')
+        <!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&sensor=false&libraries=places&region=MX"></script> -->
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAudIwG20OypHJzgENOLgG0iyfAxqnQuTM&sensor=false&libraries=places&region=MX"></script>
         <style>
             #map-canvas {
                 height: 300px;
@@ -130,12 +131,12 @@ var input = document.getElementById('searchTextField');
 v
 var options = {
    bounds:defaultBounds
-   
+
 };
 
     var autocomplete = new google.maps.places.Autocomplete(address,options);
     autocomplete.setTypes(['geocode']);
-    
+
 
     google.maps.event.addListener(autocomplete, 'place_changed', function () {
         var place = autocomplete.getPlace();
@@ -498,5 +499,3 @@ google.maps.event.addDomListener(window, 'load', initialize);
 
     </body>
 </html>
-
-

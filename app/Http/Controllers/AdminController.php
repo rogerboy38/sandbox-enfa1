@@ -320,9 +320,13 @@ class AdminController extends Controller
                 'Content-Type' => 'text/csv',
             );
         } else {
-            /* $currency_selected = Keywords::where('alias', 'Currency')->first();
-              $currency_sel = $currency_selected->keyword; */
-            $currency_sel = Config::get('app.generic_keywords.Currency');
+            $keywords = \Enfa\Keywords::get();
+            $currency_selected = \Enfa\Keywords::where('alias', 'Currency')->first();
+            $currency_sel = $currency_selected->keyword;
+            //$currency_sel = Config::get('app.generic_keywords.Currency');
+            $icons = Config::get('app.generic_keywords');
+
+            //added $UIkeywords
             $walkers = \Enfa\Walkers::get();
             $owners = \Enfa\Owners::get();
             $install=\Enfa\Informations::get();
@@ -338,8 +342,11 @@ class AdminController extends Controller
                             ->with('card_payment', $card_payment)
                             ->with('install', $install)
                             ->with('currency_sel', $currency_sel)
+                            ->with('currency_selected', $currency_selected->keyword)
                             ->with('cash_payment', $cash_payment)
+                            ->with('keywords', $keywords)
                             ->with('credit_payment', $credit_payment);
+
         }
     }
 //inicia old
@@ -2587,7 +2594,40 @@ class AdminController extends Controller
 
     public function edit_keywords() {
         $success = Input::get('success');
-        /* $keywords = Keywords::all(); */
+         $keywords = \Enfa\Keywords::all();
+
+      /*  $UIkeywords = \Enfa\Keywords::all();
+
+         foreach ($UIkeywords as $UIkeyword) {
+          Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
+         if (Input::get($keyword->id) != NULL) {
+          Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
+         $temp = Input::get($keyword->id);
+         $temp_setting = Keywords::find($keyword->id);
+         $temp_setting->keyword = Input::get($keyword->id);
+         $temp_setting->save();
+         }
+         }
+        $UIkeywords['keyProvider'] = Lang::get('customize.Provider');
+        $UIkeywords['keyUser'] = Lang::get('customize.User');
+        $UIkeywords['keyTaxi'] = Lang::get('customize.Taxi');
+        $UIkeywords['keyTrip'] = Lang::get('customize.Trip');
+        $UIkeywords['keyWalk'] = Lang::get('customize.Walk');
+        $UIkeywords['keyRequest'] = Lang::get('customize.Request');
+        $UIkeywords['keyDashboard'] = Lang::get('customize.Dashboard');
+        $UIkeywords['keyMap_View'] = Lang::get('customize.map_view');
+        $UIkeywords['keyReviews'] = Lang::get('customize.Reviews');
+        $UIkeywords['keyInformation'] = Lang::get('customize.Information');
+        $UIkeywords['keyTypes'] = Lang::get('customize.Types');
+        $UIkeywords['keyDocuments'] = Lang::get('customize.Documents');
+        $UIkeywords['keyPromo_Codes'] = Lang::get('customize.promo_codes');
+        $UIkeywords['keyCustomize'] = Lang::get('customize.Customize');
+        $UIkeywords['keyPayment_Details'] = Lang::get('customize.payment_details');
+        $UIkeywords['keySettings'] = Lang::get('customize.Settings');
+        $UIkeywords['keyAdmin'] = Lang::get('customize.Admin');
+        $UIkeywords['keyAdmin_Control'] = Lang::get('customize.admin_control');
+        $UIkeywords['keyLog_Out'] = Lang::get('customize.log_out');*/
+
         $icons = \Enfa\Icons::all();
 
         $UIkeywords = array();
@@ -2678,25 +2718,26 @@ class AdminController extends Controller
             'gcm_browser_key' => $gcm_browser_key,
                 /* DEVICE PUSH NOTIFICATION DETAILS END */
         );        // Modifying Database Config
-        /* $keywords = Keywords::all();
+//
+         $keywords = \Enfa\Keywords::all();
           foreach ($keywords as $keyword) {
-          // Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
+           Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
           if (Input::get($keyword->id) != NULL) {
-          // Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
+           Log::info('keyword = ' . print_r(Input::get($keyword->id), true));
           $temp = Input::get($keyword->id);
           $temp_setting = Keywords::find($keyword->id);
           $temp_setting->keyword = Input::get($keyword->id);
           $temp_setting->save();
           }
-          } */
-
+          }
+//
         if (Input::has('key_provider')) {
             $key_provider = trim(Input::get('key_provider'));
             if ($key_provider != "") {
-                /* $keyword = Keywords::find(1);
-                  $keyword->keyword = Input::get('key_provider');
-                  // $keyword->alias = Input::get('key_provider');
-                  $keyword->save(); */
+                 $keyword = \Enfa\Keywords::find(1);
+                  //$keyword->keyword = Input::get('key_provider');
+                  $keyword->alias = Input::get('key_provider');
+                  $keyword->save();
             } else {
                 $key_provider = null;
             }

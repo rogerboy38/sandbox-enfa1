@@ -412,7 +412,8 @@ class WebUserController extends Controller {
 
             Log::info('payment_options = ' . print_r($payment_options, true));
 
-            /* $var = Keywords::where('id', 4)->first(); */
+             $var = Keywords::where('id', 4)->first();
+             $owner = \Enfa\Owners::find($owner_id);
 
             // seccion de codigo donde recuperamos los favoritos aguas aqui mejor connect en config
             /*
@@ -472,6 +473,7 @@ class WebUserController extends Controller {
                             ->with('destination', $destination)
                             ->with('payment_option', $payment_options)
                             ->with('page', 'request-trip')
+                            ->with('owner',$owner)
                             ->with('favoritos',$option);
         } else {
             $owner = \Enfa\Owners::find($owner_id);
@@ -599,7 +601,7 @@ class WebUserController extends Controller {
             Log::info('payment_options = ' . print_r($payment_options, true));
 
             /* $var = Keywords::where('id', 4)->first(); */
-
+            $owner = \Enfa\Owners::find($owner_id);
             $types = \Enfa\ProviderType::where('is_visible', '=', 1)->get();
             return View::make('web.userRequestTrip')
                             /* ->with('title', 'Request ' . $var->keyword . '') */
@@ -608,6 +610,7 @@ class WebUserController extends Controller {
                             ->with('selection', $selection)
                             ->with('destination', $destination)
                             ->with('payment_option', $payment_options)
+                            ->with('user', $owner)
                             ->with('page', 'request-trip');
         } else {
             $owner = \Enfa\Owners::find($owner_id);
@@ -1415,7 +1418,7 @@ $conn->close();
 
     public function userVerify() {
       //return('en usuarios verify');
-      
+
         $email = Input::get('email');
         $password = Input::get('password');
         $owner = \Enfa\Owners::where('email', '=', $email)->first();

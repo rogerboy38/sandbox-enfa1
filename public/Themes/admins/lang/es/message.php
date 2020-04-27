@@ -41,7 +41,7 @@ return [
     'search'                  => 'Buscar',
     'servererror'             => 'Error del Servidor',
     '500error'                => 'Página de error 500',
-    'somethingwrong'          => 'Algo salio mal.',
+    'somethingwrong'          => 'Algo salió mal.',
     'wewillwork'              => 'Trabajaremos en la solución de esto inmediatamente.',
     'serviceunavailable'      => 'Servicio no disponible',
     '503error'                => 'Página de error 503',
@@ -131,5 +131,6 @@ return [
     'loggedin'                => 'Login correcto!',
     'entering'                => 'Entrando...',
     'registered'              => 'Usuario registrado!',
-    'filter'                  => 'Filtro23'
+    'Filter'                  => 'Filtro33',
+    'customize.Admin'         => 'customize.Admin33',
 ];

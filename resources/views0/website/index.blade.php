@@ -3,7 +3,7 @@
 <!--[if IE 7]><html lang="en" class="no-js ie7"><![endif]-->
 <!--[if IE 8]><html lang="en" class="no-js ie8"><![endif]-->
 <!--[if gt IE 8]><!-->
-<html lang="en" class="no-js">
+<html lang="es" class="no-js">
     <!--<![endif]-->
 
     <head>
@@ -412,7 +412,8 @@
         <script src="<?php echo asset_url(); ?>/website/js/owl.carousel.min.js"></script>
         <script src="<?php echo asset_url(); ?>/website/js/waypoints.min.js"></script>
 
-   <!-- <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyASm3CwaK9qtcZEWYa-iQwHaGi3gcosAJc&sensor=false"></script>
+        <!-- <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyASm3CwaK9qtcZEWYa-iQwHaGi3gcosAJc&sensor=false"></script> -->
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAudIwG20OypHJzgENOLgG0iyfAxqnQuTM&sensor=false"></script>
 
      jQuery REVOLUTION Slider  -->
         <script type="text/javascript" src="<?php echo asset_url(); ?>/website/rs-plugin/js/jquery.themepunch.plugins.min.js"></script>

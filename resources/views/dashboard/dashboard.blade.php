@@ -70,18 +70,22 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $completed_rides + $cancelled_rides ?>
                 </h3>
                 <p>
-                    Total Trips
+                    <!-- Completed {{ trans('total_trip')}}s -->
+
+                     <?php
+                     $keywords = \Enfa\Keywords::where('keyword', 'customize.total_trip')->first();
+                     print_r($keywords->alias);
+                     ?>
                 </p>
             </div>
             <div class="icon">
                 <?php /* $icon = Keywords::where('keyword', 'total_trip')->first(); */ ?>
-                <i class="fa"><?php
-                    /* $show = \Enfa\Icons::find($icon->alias); */
-                    $show=array();
-                    //$show = \Enfa\Icons::find(Config::get('app.generic_keywords.total_trip'))->get();
-                    $show = \Enfa\Icons::find(Config::get('app.generic_keywords.total_trip'));
-                    // aqui va un echo de show -> icon_code
-                    print_r($show);
+
+                    <i class="fa"><?php
+                    $show = \Enfa\Icons::where('icon_name', $keywords ->keyword)->first();
+                    //aqui va un echo de show -> icon_code;
+                    print_r($show->icon_code);
+                    //print_r("&#xf1b9;")
                     ?></i>
 
             </div>
@@ -96,16 +100,19 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $completed_rides ?>
                 </h3>
                 <p>
-                    Completed {{ trans('customize.Trip')}}s
+                    <!-- Completed {{ trans('completed_trip')}}s -->
+                     <?php
+                     $keywords = \Enfa\Keywords::where('keyword', 'customize.completed_trip')->first();
+                     print_r($keywords->alias);
+                     ?>
                 </p>
             </div>
             <div class="icon">
-                <?php /* $icon = Keywords::where('keyword', 'completed_trip')->first(); */ ?>
-                <i class="fa"><?php
-                    /* $show = \Enfa\Icons::find($icon->alias); */
-                    $show = \Enfa\Icons::find(Config::get('app.generic_keywords.completed_trip'));
+                    <i class="fa"><?php
+                    $show = \Enfa\Icons::where('icon_name', $keywords ->keyword)->first();
                     //aqui va un echo de show -> icon_code;
-                    print_r($show);
+                    print_r($show->icon_code);
+                    //print_r("&#xf05d;")
                     ?></i>
             </div>
 
@@ -119,15 +126,22 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $cancelled_rides ?>
                 </h3>
                 <p>
-                    Cancelled {{ trans('customize.Trip') }}s
+                    <!-- Cancelled {{ trans('cancelled_trip') }}s -->
+
+                     <?php
+                     $keywords = \Enfa\Keywords::where('keyword', 'customize.cancelled_trip')->first();
+                     print_r($keywords->alias);
+                     ?>
                 </p>
             </div>
             <div class="icon">
                 <?php /* $icon = Keywords::where('keyword', 'cancelled_trip')->first(); */ ?>
-                <i class="fa"><?php
-                    /* $show = \Enfa\Icons::find($icon->alias); */
-                    $show = \Enfa\Icons::find(Config::get('app.generic_keywords.cancelled_trip'));
-                    print_r($show);
+                    <i class="fa"><?php
+                    $show = \Enfa\Icons::where('icon_name', $keywords ->keyword)->first();
+                    //aqui va un echo de show -> icon_code;
+                    print_r($show->icon_code);
+
+                    //print_r("&#xf05c;")
                     ?></i>
             </div>
 
@@ -141,15 +155,22 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $currency_sel ?> <?= sprintf(($credit_payment + $card_payment + $cash_payment), 2) ?>
                 </h3>
                 <p>
-                    Total Payment
+                    <!-- Completed {{ trans('total_payment')}}s -->
+
+                     <?php
+                     $keywords = \Enfa\Keywords::where('keyword', 'customize.total_payment')->first();
+                     print_r($keywords->alias);
+                     ?>
                 </p>
             </div>
             <div class="icon">
                 <?php /* $icon = Keywords::where('keyword', 'total_payment')->first(); */ ?>
                 <i class="fa"><?php
                     /* $show = \Enfa\Icons::find($icon->alias); */
-                    $show = \Enfa\Icons::find(Config::get('app.generic_keywords.total_payment'));
-                    print_r($show);
+                    $show = \Enfa\Icons::where('icon_name', $keywords ->keyword)->first();
+                    //aqui va un echo de show -> icon_code;
+                    print_r($show->icon_code);
+                    //print_r("&#xf0d6;")
                     ?></i>
             </div>
 
@@ -163,15 +184,21 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $currency_sel ?> <?= sprintf($card_payment, 2) ?>
                 </h3>
                 <p>
-                    Card Payment
+                    <!-- Card Payment  -->
+
+                     <?php
+                     $keywords = \Enfa\Keywords::where('keyword', 'customize.card_payment')->first();
+                     print_r($keywords->alias);
+                     ?>
                 </p>
             </div>
             <div class="icon">
                 <?php /* $icon = Keywords::where('keyword', 'card_payment')->first(); */ ?>
                 <i class="fa"><?php
-                    /* $show = \Enfa\Icons::find($icon->alias); */
-                    $show = \Enfa\Icons::find(Config::get('app.generic_keywords.card_payment'));
-                    print_r($show);
+                    $show = \Enfa\Icons::where('icon_name', $keywords ->keyword)->first();
+                    //aqui va un echo de show -> icon_code;
+                    print_r($show->icon_code);
+                    //print_r("&#xf09d;")
                     ?></i>
             </div>
 
@@ -185,7 +212,12 @@ if (!isset($_COOKIE['skipInstallation'])) {
                     <?= $currency_sel ?> <?= sprintf($credit_payment, 2) ?>
                 </h3>
                 <p>
-                    Credit Payment
+                    <!-- Credit Payment  -->
+
+                    <?php
+                    $keywords = \Enfa\Keywords::where('keyword', 'customize.credit_payment')->first();
+                    print_r($keywords->alias);
+                    ?>
                 </p>
             </div>
             <div class="icon">
@@ -193,7 +225,8 @@ if (!isset($_COOKIE['skipInstallation'])) {
                 <i class="fa"><?php
                     /* $show = \Enfa\Icons::find($icon->alias); */
                     $show = \Enfa\Icons::find(Config::get('app.generic_keywords.credit_payment'));
-                    print_r($show);
+                    //print_r($show);
+                    print_r("&#xf05b;");
                     ?></i>
             </div>
 

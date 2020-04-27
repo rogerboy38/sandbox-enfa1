@@ -13,7 +13,7 @@ return [
     | views to your requirements.
     | See https://github.com/creativeorange/gravatar
     */
-
+    'locale' => 'es',
     'gravatar' => true,
 
     /*
@@ -63,5 +63,7 @@ return [
     */
 
     'install_routes' => true
+
+
 
 ];

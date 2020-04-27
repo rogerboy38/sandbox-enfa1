@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
   <head>
     <title>Place Autocomplete</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
@@ -163,7 +163,9 @@ var options = {
         setupClickListener('changetype-geocode', ['geocode']);
       }
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&libraries=places&callback=initMap"
-        async defer></script>
+    <!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCrWUV7XXXNv3fufj3iJGg-ny9A96ufQ18&libraries=places&callback=initMap"
+        async defer></script> -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAudIwG20OypHJzgENOLgG0iyfAxqnQuTM&libraries=places&callback=initMap"
+            async defer></script>
   </body>
 </html>

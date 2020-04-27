@@ -41,6 +41,7 @@ use Redirect;
 //use Theme as Theme;
 
 use Enfa\models\owners as owners;
+//use Enfa\models\favoritos as favoritos;
 
 
 class MarketplaceController extends Controller {
@@ -407,8 +408,8 @@ class MarketplaceController extends Controller {
 
             Log::info('payment_options = ' . print_r($payment_options, true));
 
-            /* $var = Keywords::where('id', 4)->first(); */
-
+            /* $var = \Enfa\Keywords::where('id', 4)->first(); */
+            // arreglar conexion sacar password de aqui
             // seccion de codigo donde recuperamos los favoritos aguas aqui mejor connect en config
             $option="<option value='0'>Selecciona un favorito</option>";
             $servername = "localhost";
@@ -1513,7 +1514,7 @@ $conn->close();
                 ->get();
 
         /* $var = Keywords::where('id', 4)->first(); */
-        
+
         return View::make('web.userMarketplace')
                         /* ->with('title', 'My ' . $var->keyword . 's') */
                         ->with('title', 'My ' . Config::get('app.generic_keywords.Trip') . 's')

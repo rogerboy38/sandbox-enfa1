@@ -26,7 +26,7 @@ return array(
     |
     */
 
-    'url' => 'http://localhost/enfadelivery/public',
+    'url' => 'http://localhost',
 
     /*
     |--------------------------------------------------------------------------
@@ -127,10 +127,8 @@ return array(
         'Raahul\LarryFour\LarryFourServiceProvider',
         'Davibennun\LaravelPushNotification\LaravelPushNotificationServiceProvider',
         'Intervention\Image\ImageServiceProvider',
-        'Yajra\Datatables\DatatablesServiceProvider',
-        'App\Providers\RouteServiceProvider',
-        'App\AdminLTE\TemplateServiceProvider', 
-
+        'Rebing\GraphQL\GraphQLServiceProvider',
+        'MLL\GraphQLPlayground\GraphQLPlaygroundServiceProvider',
 
     ),
 
@@ -198,10 +196,10 @@ return array(
         'URL'               => 'Illuminate\Support\Facades\URL',
         'Validator'         => 'Illuminate\Support\Facades\Validator',
         'View'              => 'Illuminate\Support\Facades\View',
-        'Datatables'        => 'Yajra\Datatables\Facades\Datatables',
         'AWS'               => 'Aws\Laravel\AwsFacade',
         'PushNotification'  => 'Davibennun\LaravelPushNotification\Facades\PushNotification',
         'Image'             => 'Intervention\Image\Facades\Image',
+        ‘GraphQL’           => ‘Rebing\GraphQL\Support\Facades\GraphQL’,
     ),
     'menu_titles' => array(
         'admin_control' => '',
@@ -222,14 +220,14 @@ return array(
         'promotional_codes' => '',
     ),
     'generic_keywords'=> array(
-        'Provider' => '',
-        'User' => '',
-        'Services' => '',
-        'Trip' => '',
-        'Currency' => 'AUD',
+        'Provider' => 'Provider1',
+        'User' => 'User1',
+        'Services' => 'Services1',
+        'Trip' => '&#xf084;',
+        'Currency' => 'MXN',
         'total_trip' => '1',
         'cancelled_trip' => '1',
-        'total_payment' => '5',
+        'total_payment' => '1',
         'completed_trip' => '1',
         'card_payment' => '1',
         'credit_payment' => '1',
@@ -243,10 +241,10 @@ return array(
     'provider_certy_type' => '',
     'gcm_browser_key' => '',
     /* DEVICE PUSH NOTIFICATION DETAILS END */
-    'currency_symb' => '',
+    'currency_symb' => '$',
 
     /* Developer Company Details */
-    'developer_company_name' => '',
+    'developer_company_name' => 'Enfa',
     'developer_company_web_link' => '',
     'developer_company_email' => '',
     'developer_company_fb_link' => '',

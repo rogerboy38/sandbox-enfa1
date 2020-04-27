@@ -7,7 +7,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="author" content="pampersdry.info">
         <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-        <title><?= $title ?> | <?= Config::get('app.website_title') ?> Administrators Dashboard</title>
+        <title><?= $title ?> | <?= Config::get('app.website_title') ?> {{trans('customize.Administrators Dashboard')}}</title>
 
         <?php
         $theme = \Enfa\Themes::all();
@@ -64,7 +64,7 @@
         <script src="{{asset('/web/js/validation.js')}}"></script>
     </head>
 
-    <body class="skin-blue" >
+    <body class="skin-black" >
         <!-- header logo: style can be found in header.less -->
         <header class="header">
             <a  class="logo" href="{{ URL::Route('AdminMapview') }}" >

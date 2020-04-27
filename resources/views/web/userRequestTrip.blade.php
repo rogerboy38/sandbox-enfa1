@@ -13,7 +13,8 @@
     <div id='msg'></div>
     <div class="content-panel">
         <div class="row">
-            <h4>Solicita {{trans('customize.Trip')}}</h4><br>
+            <h4>Solicita {{trans('customize.Trip')}}   Usuario:  <?php  echo $user->first_name ?> <?php echo $user->last_name ?>
+            </h4><br>
             <div class="col-md-11">
 
                 <div class="row">
@@ -45,7 +46,7 @@
                         <!--<input type="text" class="form-control" name="mandado" id="mandado"  placeholder="Describe tu mandado" style="margin-bottom:10px;width:100%;float:left;">
                        -->
                         <div class="col-sm-12">
-                            <label class="col-sm-12 col-sm-12 control-label">Tipo de Servicio</label>
+                          <label class="col-sm-12 col-sm-12 control-label">Tipo de Servicio</label>
                         </div>
                         <br>
                         <select name="type" class="form-control" id="flow4">

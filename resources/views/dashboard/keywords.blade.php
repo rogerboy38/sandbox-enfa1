@@ -14,8 +14,9 @@
               {{csrf_field()}}
                 <div class="box-body">
                     <div class="form-group">
-                        <label> 1. Provider </label>
-                        <input class="form-control" type="text" name="key_provider" value="{{ Config::get('app.generic_keywords.Provider') }}" placeholder="Value for Provider Key Word">
+                        <label> 1. Provider 2020</label>
+                        <!-- <input class="form-control" type="text" name="key_provider" value="{{ Config::get('app.generic_keywords.Provider') }}" placeholder="Value for Provider Key Word"> -->
+                        <input class="form-control" type="text" name="key_provider" value="{{ Config::get('app.generic_keywords.Provider') }}" placeholder="{{ Config::get('app.generic_keywords.Provider') }}">
                     </div>
                     <div class="form-group">
                         <label> 2. User </label>
@@ -31,8 +32,15 @@
                     </div>
                     <div class="form-group">
                         <label> 5. Currency </label>
+
                         <select name="key_currency" id="currencies" class="form-control">
-                            <option value="AUD" <?php
+                          <option value="MXN" <?php
+                          if (Config::get('app.generic_keywords.Currency') == 'MXN') {
+                              echo "selected";
+                          }
+                          ?>>Mexico Peso</option>
+                          <option value="MXN" <?php echo 'selected'?>> Mexico Peso</option>
+                          <option value="AUD" <?php
                             if (Config::get('app.generic_keywords.Currency') == 'AUD') {
                                 echo "selected";
                             }
@@ -72,11 +80,6 @@
                                 echo "selected";
                             }
                             ?>>Japan Yen</option>
-                            <option value="MXN" <?php
-                            if (Config::get('app.generic_keywords.Currency') == 'MXN') {
-                                echo "selected";
-                            }
-                            ?>>Mexico Peso</option>
                             <option value="NZD" <?php
                             if (Config::get('app.generic_keywords.Currency') == 'NZD') {
                                 echo "selected";
@@ -120,11 +123,12 @@
 
                         </select>
                     </div>
-                    <?php
+                    <?php echo "antes de keywords";
+
                     if (isset($keywords)) {
                         foreach ($keywords as $keyword) {
                             if ($keyword->id != 5) {
-                                /* if ($keyword->id < 5) {
+                                 if ($keyword->id < 5) {
                                   ?>
 
                                   <div class="form-group">
@@ -136,7 +140,7 @@
                                   <input class="form-control" type="text" name="{{$keyword->id}}" value="{{$keyword->keyword}}" />
                                   </div>
                                   <?php
-                                  } */
+                                  }
                             } else {
                                 ?>
                                 <!--<div class="form-group">
@@ -361,7 +365,7 @@
     <div class="col-md-6 col-sm-12">
         <div class="box box-primary">
             <div class="box-header">
-                <h3 class="box-title">Edit Application UI keywords</h3>
+                <h3 class="box-title">Edit Application UI keywords1</h3>
             </div>
 
             {{  Form::hidden('url',URL::previous())  }}
@@ -491,7 +495,7 @@
 </script>
 <?php if ($success == 1) { ?>
     <script type="text/javascript">
-        alert('Settings Updated Successfully');
+        alert('Settings Updated Successfully1');
         /*aqui recargar los elementos guardados*/
     </script>
 <?php } ?>

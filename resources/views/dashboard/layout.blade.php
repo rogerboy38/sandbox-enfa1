@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang = "es">
     <!-- START Head -->
     <head>
         <!-- START META SECTION -->
@@ -7,14 +7,14 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="author" content="pampersdry.info">
         <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-        <title><?= $title ?> | <?= Config::get('app.website_title') ?> Enfa Admin Dashboard</title>
+        <title><?= $title ?> | <?= Config::get('app.website_title') ?> Enfa Admin Dashboard20</title>
 
         <?php
 
         $theme = Theme::all();
         $theme = DB::select('select * from themes');
         $active = '#000066';
-        $logo = '/images/logo.png';
+        $logo = '/images/logoinv.png';
         $favicon = '/images/favicon.ico';
         foreach ($theme as $themes) {
             $active = $themes->active_color;
@@ -22,7 +22,7 @@
             $logo = '/images/' . $themes->logo;
         }
         if ($logo == '/images/') {
-            $logo = '/images/logo.png';
+            $logo = '/images/logoinv.png';
         }
         if ($favicon == '/images/') {
             $favicon = '/images/favicon.ico';
@@ -65,7 +65,7 @@
         <script src="<?php echo asset_url(); ?>/web/js/validation.js"></script>
     </head>
 
-    <body class="skin-blue" >
+    <body class="skin-black" >
         <!-- header logo: style can be found in header.less -->
         <header class="header">
             <a  class="logo" href="{{ URL::Route('AdminMapview') }}" >
@@ -133,7 +133,7 @@
                         </li>
 
                         <li id="walkers" title="Providers" >
-                            <a href="{{ URL::Route('AdminProviders') }}"><i class="fa fa-users"></i> <span>{{trans('customize.Provider').'s'}}</span></a>
+                            <a href="{{ URL::Route('AdminProviders') }}"><i class="fa fa-users"></i> <span>{{trans('customize.Providers')}}</span></a>
                         </li>
                         <li id="walks" title="Requests">
                             <a href="{{ URL::Route('AdminRequests') }}"><i class="fa fa-location-arrow"></i> <span>{{ trans('customize.Request').'s'}}</span></a>
